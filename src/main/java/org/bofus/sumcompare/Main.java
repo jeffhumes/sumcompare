@@ -41,12 +41,14 @@ public class Main
 		// -------------------------------------------------------------
 		CommandLineParser parser = new DefaultParser();
 		Options cliOptions = new Options();
+		cliOptions.addOption("b", "backup-source-first", false, "Backup (zip file) the source directory before taking any other action (default: false)");
 		cliOptions.addOption("d", "dry-run", false, "Run the process (default: false)");
 		cliOptions.addOption("o", "create-output-file", false, "Create an output (excel) file");
 		cliOptions.addOption("p", "preserve-file-date", false, "Preserve the file date on copy (Default: false)");
 		cliOptions.addOption("r", "post-remove", false, "Remove source file after copy to destination (Default: false)");
 		cliOptions.addOption("s", "source", true, "Specifies the source location	<REQUIRED>");
 		cliOptions.addOption("t", "target", true, "Specifies the target location		<REQUIRED>");
+		cliOptions.addOption("y", "i-agree", false, "Agree to the fact that there is not warranty, or guarantee, and hold noone responsible for the results of this application");
 		cliOptions.addOption("z", "chksumtype", true, "The type of checksum data to use for comparison (SHA1, MD5)	<REQUIRED>");
 		cliOptions.addOption("h", "help", false, "Shows this help screen");
 
@@ -58,10 +60,22 @@ public class Main
 			CommandLine cmdLine;
 			cmdLine = parser.parse(cliOptions, args);
 
+			if (cmdLine.hasOption("b"))
+			{
+				propertiesObject.setBackupFirst(true);
+			}
+			else
+			{
+				propertiesObject.setBackupFirst(false);
+			}
+			
 			if (cmdLine.hasOption("d"))
 			{
 				propertiesObject.setDryRun(true);
-//				dryRun = true;
+			}
+			else
+			{
+				propertiesObject.setDryRun(false);				
 			}
 
 			if (cmdLine.hasOption("s"))
@@ -117,6 +131,19 @@ public class Main
 				showHelp(cliOptions);
 			}
 
+			if (cmdLine.hasOption("y"))
+			{
+				logger.info("User has accepted the terms via the command line option '-y'");
+			}
+			else
+			{
+				boolean userAccepts = UserUtilities.getUserAcceptance();
+				if (userAccepts = true)
+				{
+					logger.info("User has accepted the agreement, beginning processing...");
+				}
+			}
+			
 			if (cmdLine.hasOption("h"))
 			{
 				showHelp(cliOptions);
@@ -129,23 +156,34 @@ public class Main
 			throw e;
 		}
 
-		boolean userAccepts = UserUtilities.getUserAcceptance();
-		if (userAccepts = true)
-		{
-			logger.info("User has accepted the agreement, beginning processing...");
-		}
 
+		if (propertiesObject.isBackupFirst() == true)
+		{
+//			String backupFile = propertiesObject.getSourceLocation();
+			logger.debug("Backup first selected");
+			FileUtilsLocal.populateBackupFilesList(propertiesObject);
+			FileUtilsLocal.zipDirectory(propertiesObject);
+		}
+		else
+		{
+			logger.warn("Backup first not specified on the command line, we will not backup the source files first!!!");
+		}
+		
 		// get the target file directory list
+		logger.info("Getting the file list for the target location...");
 		FileUtilsLocal.getTargetDirectoryContentsArray(propertiesObject.getTargetLocation());
 		logger.debug(String.format("Target File Singleton Size: %s", TargetFileArraySingleton.getInstance().getArray().size()));
 
 		// get the checksums for the target files and put them in a map
+		logger.info("Getting the checksums for the target location files, depending on the number and size of files this may take a while...");
 		FileUtilsLocal.createTargetFileChecksumMap(TargetFileArraySingleton.getInstance(), propertiesObject.getDigestType());
 
 		// get the source file directory list
+		logger.info("Getting the file list  for the source location...");
 		FileUtilsLocal.getSourceDirectoryContentsArray(propertiesObject.getSourceLocation());
 		logger.debug(String.format("Source File Singleton Size: %s", SourceFileArraySingleton.getInstance().getArray().size()));
 
+		logger.debug("Iterating through the source array, and checking if there is already a matching checksum in the target array");
 		for (int filecount = 0; filecount < SourceFileArraySingleton.getInstance().getArray().size(); filecount++)
 		{
 			String thisSourceFileName = SourceFileArraySingleton.getInstance().getArray().get(filecount);
@@ -161,9 +199,9 @@ public class Main
 
 				if (thisSourceFileNameOnly.trim().equals(thisTargetFileNameOnly.trim()))
 				{
+					// if this is a dryrun, add to the map, so that we can create an output file of all files
 					if (propertiesObject.isDryRun() == true)
 					{
-						logger.info(String.format("%s seems to be a copy of file:\r\n%s", thisSourceFileName, existingfile));
 						MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
 					}
 				}
@@ -193,38 +231,33 @@ public class Main
 					FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
 				}
 			}
-//			else
-//			{
-//				TargetFileHashMapSingleton.getInstance().addToMap(thisFileChecksum, fileString);
-//			}
 		}
 
-		logger.debug(String.format("%s files not copied as there were duplicates with different names in the target location", MatchingFileHashMapSingleton.getInstance().getMap().size()));
-//		for (int matchNumber = 0; matchNumber < MatchingFileHashMapSingleton.getInstance().getMap().size(); matchNumber++)
-//		{
-//			String sourceFileMatch = MatchingFileHashMapSingleton.getInstance().getMap().get(matchNumber);
-////			logger.debug("===================================================================================");
-////			logger.debug(msg);
-////			logger.debug(msg);
-////			logger.debug(msg);
-////			logger.debug("===================================================================================");
-//		}
-
-//		for (String key : MatchingFileHashMapSingleton.getInstance().getMap().keySet())
-//		{
-//			logger.debug("===================================================================================");
-//			logger.debug("Source File: " + key);
-//			logger.debug("Target File: " + MatchingFileHashMapSingleton.getInstance().getMap().get(key));
-////			logger.debug(msg);
-////			logger.debug(msg);
-//			logger.debug("===================================================================================");
-//		}
-
-		if (propertiesObject.isCreateOutputFile() == true)
+		
+		
+		if (CopiedFileHashMapSingleton.getInstance().getMap().size() != 0 || MatchingFileHashMapSingleton.getInstance().getMap().size() != 0)
 		{
-			logger.debug("Creating output file");
-			ReportUtils.createOutputExcel();
+			logger.debug(String.format("%s files copied ", CopiedFileHashMapSingleton.getInstance().getMap().size()));
+			logger.debug(String.format("%s files not copied as there were duplicates in the target location", MatchingFileHashMapSingleton.getInstance().getMap().size()));
+			if (propertiesObject.isCreateOutputFile() == true)
+			{
+				logger.debug("Creating output file");
+				ReportUtils.createOutputExcel();
+			}
 		}
+		else
+		{
+			if (propertiesObject.isCreateOutputFile() == true)
+			{
+				logger.debug("There were no files copied, and no duplicate files in the target with different names, no use creating a report");
+			}
+		}
+
+		
+		logger.info("================================================");
+		logger.info("		COMPLETE		");
+		logger.info("================================================");
+		
 
 //		// get the source file directory list
 //		FileUtils.getSourceDirectoryContentsArray(sourceLocation);

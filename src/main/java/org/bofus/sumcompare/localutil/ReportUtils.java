@@ -63,10 +63,10 @@ public class ReportUtils
 			currentRow.createCell(0).setCellValue(key);
 			currentRow.createCell(1).setCellValue(CopiedFileHashMapSingleton.getInstance().getMap().get(key));
 			
-			logger.debug("===================================================================================");
-			logger.debug("Source File: " + key);
-			logger.debug("Target File: " + CopiedFileHashMapSingleton.getInstance().getMap().get(key));
-			logger.debug("===================================================================================");
+//			logger.debug("===================================================================================");
+//			logger.debug("Source File: " + key);
+//			logger.debug("Target File: " + CopiedFileHashMapSingleton.getInstance().getMap().get(key));
+//			logger.debug("===================================================================================");
 			copiedRowCount++;
 		}
 
@@ -102,10 +102,10 @@ public class ReportUtils
 			currentRow.createCell(0).setCellValue(key);
 			currentRow.createCell(1).setCellValue(MatchingFileHashMapSingleton.getInstance().getMap().get(key));
 			
-			logger.debug("===================================================================================");
-			logger.debug("Source File: " + key);
-			logger.debug("Target File: " + MatchingFileHashMapSingleton.getInstance().getMap().get(key));
-			logger.debug("===================================================================================");
+//			logger.debug("===================================================================================");
+//			logger.debug("Source File: " + key);
+//			logger.debug("Target File: " + MatchingFileHashMapSingleton.getInstance().getMap().get(key));
+//			logger.debug("===================================================================================");
 			notCopiedRowCount++;
 		}
 

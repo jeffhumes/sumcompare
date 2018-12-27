@@ -3,14 +3,22 @@ package org.bofus.sumcompare.localutil;
 import java.beans.PropertyVetoException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FilenameUtils;
 import org.bofus.sumcompare.Main;
+import org.bofus.sumcompare.model.PropertiesObject;
 import org.bofus.sumcompare.singletons.SourceFileArraySingleton;
+import org.bofus.sumcompare.singletons.SourceFileBackupArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileHashMapSingleton;
 import org.bofus.sumcompare.singletons.TargetFileArraySingleton;
 import org.bofus.sumcompare.singletons.TargetFileHashMapSingleton;
@@ -86,12 +94,12 @@ public class FileUtilsLocal
 			{
 				if (file.isDirectory())
 				{
-					logger.debug(String.format("Directory: %s", file.getCanonicalPath()));
+//					logger.debug(String.format("Directory: %s", file.getCanonicalPath()));
 					getSourceDirectoryContentsArray(file.toString());
 				}
 				else
 				{
-					logger.debug(String.format("File: %s", file.getCanonicalPath()));
+//					logger.debug(String.format("File: %s", file.getCanonicalPath()));
 					SourceFileArraySingleton.getInstance().addToArray(file.getCanonicalPath());
 				}
 			}
@@ -101,7 +109,7 @@ public class FileUtilsLocal
 			e.printStackTrace();
 		}
 	}
-	
+
 	public static void createSourceFileChecksumMap(SourceFileArraySingleton sourceFileArray, MessageDigest digestType) throws IOException, SQLException, PropertyVetoException
 	{
 		for (int sourceFileNumber = 0; sourceFileNumber < sourceFileArray.getInstance().getArray().size(); sourceFileNumber++)
@@ -110,12 +118,12 @@ public class FileUtilsLocal
 			File thisFile = new File(fileString);
 			String thisFileChecksum = FileUtilsLocal.getFileChecksum(digestType, thisFile);
 //			logger.debug(String.format("File Checksum for file %s is %s", fileString, thisFileChecksum));
-			
+
 			if (SourceFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum))
 			{
 				logger.debug(String.format("Hashmap already contains an entry for checksum: %s with filename of %s", thisFileChecksum, SourceFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum)));
 				String existingfile = SourceFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
-				logger.info(String.format("%s \r\n seems to be a copy of file:\r\n%s",thisFile, existingfile));
+//				logger.info(String.format("%s \r\n seems to be a copy of file:\r\n%s", thisFile, existingfile));
 			}
 			else
 			{
@@ -124,7 +132,6 @@ public class FileUtilsLocal
 		}
 		logger.debug(String.format("Hashmap size for source files: %s", SourceFileHashMapSingleton.getInstance().getMap().size()));
 	}
-	
 
 	public static void getTargetDirectoryContentsArray(String inputLocation) throws SQLException, PropertyVetoException
 	{
@@ -137,12 +144,12 @@ public class FileUtilsLocal
 			{
 				if (file.isDirectory())
 				{
-					logger.debug(String.format("Directory: %s", file.getCanonicalPath()));
+//					logger.debug(String.format("Directory: %s", file.getCanonicalPath()));
 					getTargetDirectoryContentsArray(file.toString());
 				}
 				else
 				{
-					logger.debug(String.format("File: %s", file.getCanonicalPath()));
+//					logger.debug(String.format("File: %s", file.getCanonicalPath()));
 					TargetFileArraySingleton.getInstance().addToArray(file.getCanonicalPath());
 				}
 			}
@@ -153,7 +160,6 @@ public class FileUtilsLocal
 		}
 	}
 
-	
 	public static void createTargetFileChecksumMap(TargetFileArraySingleton targetFileArray, MessageDigest digestType) throws IOException, SQLException, PropertyVetoException
 	{
 		for (int targetFileNumber = 0; targetFileNumber < targetFileArray.getInstance().getArray().size(); targetFileNumber++)
@@ -162,12 +168,12 @@ public class FileUtilsLocal
 			File thisFile = new File(fileString);
 			String thisFileChecksum = FileUtilsLocal.getFileChecksum(digestType, thisFile);
 //			logger.debug(String.format("File Checksum for file %s is %s", fileString, thisFileChecksum));
-			
+
 			if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum))
 			{
 				logger.debug(String.format("Hashmap already contains an entry for checksum: %s with filename of %s", thisFileChecksum, TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum)));
 				String existingfile = TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
-				logger.info(String.format("%s \r\n seems to be a copy of file:\r\n%s",thisFile, existingfile));
+//				logger.info(String.format("%s \r\n seems to be a copy of file:\r\n%s", thisFile, existingfile));
 			}
 			else
 			{
@@ -216,7 +222,73 @@ public class FileUtilsLocal
 		return fileName.toString();
 	}
 
-	
+	public static void populateBackupFilesList(PropertiesObject propertiesObject) throws IOException, SQLException, PropertyVetoException
+	{
+		File folderToZip = new File(propertiesObject.getSourceLocation());
+
+		File[] files = folderToZip.listFiles();
+		for (File file : files)
+		{
+			if (file.isFile())
+				SourceFileBackupArraySingleton.getInstance().getArray().add(new File(file.getAbsolutePath()));
+			else
+				populateBackupFilesList(propertiesObject);
+		}
+		logger.debug(String.format("Number of files in backup array: %s for directory: %s", SourceFileBackupArraySingleton.getInstance().getArray().size(), propertiesObject.getSourceLocation()));
+	}
+
+//	private void zipDirectory(File dir, String zipDirName)
+	public static void zipDirectory(PropertiesObject propertiesObject) throws SQLException, PropertyVetoException
+	{
+		String tempDir = System.getProperty("java.io.tmpdir");
+//		File backupFileName = new File(tempDir + File.separator +  "Source_Backup.zip");
+		String backupFileName = tempDir + File.separator +  "Source_Backup.zip";
+		logger.info(String.format("Backing up to: %s", backupFileName));
+		try
+		{
+			populateBackupFilesList(propertiesObject);
+			
+			//now zip files one by one
+			//create ZipOutputStream to write to the zip file
+			FileOutputStream fos = new FileOutputStream(backupFileName);
+			ZipOutputStream zos = new ZipOutputStream(fos);
+			ArrayList<File> sourceFilesToBackup = SourceFileBackupArraySingleton.getInstance().getArray();
+			
+			for (File filePath : sourceFilesToBackup)
+			{
+				try
+				{
+					logger.debug(String.format("Adding to zip file: %s",  filePath));
+					//for ZipEntry we need to keep only relative file path, so we used substring on absolute path
+//					ZipEntry ze = new ZipEntry(filePath.substring(dir.getAbsolutePath().length() + 1, filePath.length()));
+					ZipEntry ze = new ZipEntry(filePath.toString());
+					zos.putNextEntry(ze);
+					//read the file and write to ZipOutputStream
+					FileInputStream fis = new FileInputStream(filePath);
+					byte[] buffer = new byte[1024];
+					int len;
+					while ((len = fis.read(buffer)) > 0)
+					{
+						zos.write(buffer, 0, len);
+					}
+					zos.closeEntry();
+					fis.close();
+				}
+				catch (ZipException zex)
+				{
+					logger.error(String.format("Caught Zip exception %s", zex.getMessage()));
+				}
+
+			}
+			zos.close();
+			fos.close();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
 	public static void checkDirectoryExists(String directory)
 	{
 		File thisDirectory = new File(directory);
@@ -229,7 +301,7 @@ public class FileUtilsLocal
 		{
 			logger.error(String.format("Directory provided (%s) does not exist, exiting now...", directory));
 			System.exit(94);
-		}		
+		}
 	}
 
 }

@@ -11,6 +11,7 @@ public class PropertiesObject
 	private boolean			preserveFileDate;
 	private boolean			createOutputFile;
 	private boolean			dryRun;
+	private boolean			backupFirst;
 
 	public String getSourceLocation()
 	{
@@ -80,6 +81,16 @@ public class PropertiesObject
 	public void setDryRun(boolean dryRun)
 	{
 		this.dryRun = dryRun;
+	}
+
+	public boolean isBackupFirst()
+	{
+		return backupFirst;
+	}
+
+	public void setBackupFirst(boolean backupFirst)
+	{
+		this.backupFirst = backupFirst;
 	}
 
 }
