@@ -15,7 +15,9 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.bofus.sumcompare.Main;
+import org.bofus.sumcompare.model.ExistingTargetFileObject;
 import org.bofus.sumcompare.singletons.CopiedFileHashMapSingleton;
+import org.bofus.sumcompare.singletons.ExistingTargetFileObjectArraySingleton;
 import org.bofus.sumcompare.singletons.MatchingFileHashMapSingleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +64,7 @@ public class ReportUtils
 			Row currentRow = copiedSheet.createRow(copiedRowCount);
 			currentRow.createCell(0).setCellValue(key);
 			currentRow.createCell(1).setCellValue(CopiedFileHashMapSingleton.getInstance().getMap().get(key));
-			
+
 //			logger.debug("===================================================================================");
 //			logger.debug("Source File: " + key);
 //			logger.debug("Target File: " + CopiedFileHashMapSingleton.getInstance().getMap().get(key));
@@ -75,9 +77,37 @@ public class ReportUtils
 			copiedSheet.autoSizeColumn(i);
 		}
 
-		
-		
-		
+		//==================================================
+		// Create the WorkSheet for the files that are duplicates already in the target directory
+		//==================================================
+		Sheet targetDupeSheet = workbook.createSheet("Target Duplicate Files");
+		// Create a Row
+		Row targetDupeheaderRow = targetDupeSheet.createRow(0);
+
+		String[] targetDupeheaderColumnNames = { "Current File", "Duplicate File", "CheckSum" };
+		// Create Header cells
+		for (int i = 0; i < targetDupeheaderColumnNames.length; i++)
+		{
+			Cell cell = targetDupeheaderRow.createCell(i);
+			cell.setCellValue(targetDupeheaderColumnNames[i]);
+			cell.setCellStyle(headerCellStyle);
+		}
+
+		// Add the rows for the file data
+		for (int targetDupeArrayCount = 0; targetDupeArrayCount < ExistingTargetFileObjectArraySingleton.getInstance().getArray().size(); targetDupeArrayCount++)
+		{
+			ExistingTargetFileObject thisObject = ExistingTargetFileObjectArraySingleton.getInstance().getArray().get(targetDupeArrayCount);
+			Row currentRow = targetDupeSheet.createRow(targetDupeArrayCount + 1);
+			currentRow.createCell(0).setCellValue(thisObject.getCurrentFile());
+			currentRow.createCell(1).setCellValue(thisObject.getExistingFile());
+			currentRow.createCell(2).setCellValue(thisObject.getFileChecksum());
+		}
+
+		for (int i = 0; i < targetDupeheaderColumnNames.length; i++)
+		{
+			targetDupeSheet.autoSizeColumn(i);
+		}
+
 		//==================================================
 		// Create the WorkSheet for the files NOT copied
 		//==================================================
@@ -101,14 +131,8 @@ public class ReportUtils
 			Row currentRow = notCopiedSheet.createRow(notCopiedRowCount);
 			currentRow.createCell(0).setCellValue(key);
 			currentRow.createCell(1).setCellValue(MatchingFileHashMapSingleton.getInstance().getMap().get(key));
-			
-//			logger.debug("===================================================================================");
-//			logger.debug("Source File: " + key);
-//			logger.debug("Target File: " + MatchingFileHashMapSingleton.getInstance().getMap().get(key));
-//			logger.debug("===================================================================================");
 			notCopiedRowCount++;
 		}
-
 
 		for (int i = 0; i < notCopiedheaderColumnNames.length; i++)
 		{

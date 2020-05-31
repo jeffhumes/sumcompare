@@ -16,7 +16,9 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FilenameUtils;
 import org.bofus.sumcompare.Main;
+import org.bofus.sumcompare.model.ExistingTargetFileObject;
 import org.bofus.sumcompare.model.PropertiesObject;
+import org.bofus.sumcompare.singletons.ExistingTargetFileObjectArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileBackupArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileHashMapSingleton;
@@ -171,9 +173,14 @@ public class FileUtilsLocal
 
 			if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum))
 			{
-				logger.debug(String.format("Hashmap already contains an entry for checksum: %s with filename of %s", thisFileChecksum, TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum)));
-				String existingfile = TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
+				String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
+				logger.debug(String.format("Hashmap already contains an entry for checksum: %s with filename of %s", thisFileChecksum, existingFile));
 //				logger.info(String.format("%s \r\n seems to be a copy of file:\r\n%s", thisFile, existingfile));
+				ExistingTargetFileObject thisObject = new ExistingTargetFileObject();
+				thisObject.setCurrentFile(fileString);
+				thisObject.setExistingFile(existingFile);
+				thisObject.setFileChecksum(thisFileChecksum);
+				ExistingTargetFileObjectArraySingleton.getInstance().addToArray(thisObject);
 			}
 			else
 			{
@@ -181,6 +188,7 @@ public class FileUtilsLocal
 			}
 		}
 		logger.debug(String.format("Hashmap size for target files: %s", TargetFileHashMapSingleton.getInstance().getMap().size()));
+		logger.debug(String.format("Hashmap size for duplicate/existing target files: %s", ExistingTargetFileObjectArraySingleton.getInstance().getArray().size()));
 	}
 
 	public static String getFilePath(String file)

@@ -12,6 +12,7 @@ public class PropertiesObject
 	private boolean			createOutputFile;
 	private boolean			dryRun;
 	private boolean			backupFirst;
+	private boolean			keepSourceStructure;
 
 	public String getSourceLocation()
 	{
@@ -91,6 +92,16 @@ public class PropertiesObject
 	public void setBackupFirst(boolean backupFirst)
 	{
 		this.backupFirst = backupFirst;
+	}
+
+	public boolean isKeepSourceStructure()
+	{
+		return keepSourceStructure;
+	}
+
+	public void setKeepSourceStructure(boolean keepSourceStructure)
+	{
+		this.keepSourceStructure = keepSourceStructure;
 	}
 
 }

@@ -28,13 +28,6 @@ public class Main
 	public static void main(String[] args) throws Exception
 	{
 		PropertiesObject propertiesObject = new PropertiesObject();
-//		String sourceLocation = null;
-//		String targetLocation = null;
-//		MessageDigest digestType = null;
-//		boolean postCopyRemove = false;
-//		boolean preserveFileDate = false;
-//		boolean createOutputFile = false;
-//		boolean dryRun = false;
 
 		// -------------------------------------------------------------
 		// Set command line options
@@ -43,6 +36,7 @@ public class Main
 		Options cliOptions = new Options();
 		cliOptions.addOption("b", "backup-source-first", false, "Backup (zip file) the source directory before taking any other action (default: false)");
 		cliOptions.addOption("d", "dry-run", false, "Run the process (default: false)");
+		cliOptions.addOption("k", "keep-source-structure", false, "Keep the source directory structure when copying to target (default: false)");
 		cliOptions.addOption("o", "create-output-file", false, "Create an output (excel) file");
 		cliOptions.addOption("p", "preserve-file-date", false, "Preserve the file date on copy (Default: false)");
 		cliOptions.addOption("r", "post-remove", false, "Remove source file after copy to destination (Default: false)");
@@ -68,14 +62,14 @@ public class Main
 			{
 				propertiesObject.setBackupFirst(false);
 			}
-			
+
 			if (cmdLine.hasOption("d"))
 			{
 				propertiesObject.setDryRun(true);
 			}
 			else
 			{
-				propertiesObject.setDryRun(false);				
+				propertiesObject.setDryRun(false);
 			}
 
 			if (cmdLine.hasOption("s"))
@@ -143,7 +137,16 @@ public class Main
 					logger.info("User has accepted the agreement, beginning processing...");
 				}
 			}
-			
+
+			if (cmdLine.hasOption("k"))
+			{
+				propertiesObject.setKeepSourceStructure(true);
+			}
+			else
+			{
+				propertiesObject.setKeepSourceStructure(false);
+			}
+
 			if (cmdLine.hasOption("h"))
 			{
 				showHelp(cliOptions);
@@ -156,7 +159,6 @@ public class Main
 			throw e;
 		}
 
-
 		if (propertiesObject.isBackupFirst() == true)
 		{
 //			String backupFile = propertiesObject.getSourceLocation();
@@ -168,7 +170,7 @@ public class Main
 		{
 			logger.warn("Backup first not specified on the command line, we will not backup the source files first!!!");
 		}
-		
+
 		// get the target file directory list
 		logger.info("Getting the file list for the target location...");
 		FileUtilsLocal.getTargetDirectoryContentsArray(propertiesObject.getTargetLocation());
@@ -215,11 +217,23 @@ public class Main
 			else
 			{
 				String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
-				String targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
-				File targetFile = new File(targetFullPath);
+				String targetFullPath = null;
+				String sourceBasePath = null;
 
-//				String currentSourceBaseLocation = FileUtilsLocal.getFilePath(thisSourceFileName);
-//				String destinationFileName = "";
+				if (propertiesObject.isKeepSourceStructure() == true)
+				{
+//					String[] sourceBasePath = thisSourceFileName.split(propertiesObject.getSourceLocation());
+					sourceBasePath = thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
+					String tempPath = FilenameUtils.getPath(sourceBasePath);
+					targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + tempPath + File.separatorChar + targetFileName;
+				}
+				else
+				{
+					targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
+
+				}
+
+				File targetFile = new File(targetFullPath);
 
 				CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
 				if (propertiesObject.isDryRun() == true)
@@ -233,8 +247,6 @@ public class Main
 			}
 		}
 
-		
-		
 		if (CopiedFileHashMapSingleton.getInstance().getMap().size() != 0 || MatchingFileHashMapSingleton.getInstance().getMap().size() != 0)
 		{
 			logger.debug(String.format("%s files copied ", CopiedFileHashMapSingleton.getInstance().getMap().size()));
@@ -253,11 +265,9 @@ public class Main
 			}
 		}
 
-		
 		logger.info("================================================");
 		logger.info("		COMPLETE		");
 		logger.info("================================================");
-		
 
 //		// get the source file directory list
 //		FileUtils.getSourceDirectoryContentsArray(sourceLocation);
