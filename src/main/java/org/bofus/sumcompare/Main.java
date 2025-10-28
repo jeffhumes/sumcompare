@@ -1,6 +1,7 @@
 package org.bofus.sumcompare;
 
 import java.io.File;
+import java.security.MessageDigest;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -82,7 +83,7 @@ public class Main {
       }
 
       if (cmdLine.hasOption("s")) {
-        //				sourceLocation = cmdLine.getOptionValue("s");
+        // sourceLocation = cmdLine.getOptionValue("s");
         propertiesObject.setSourceLocation(cmdLine.getOptionValue("s"));
         logger.debug(
             String.format(
@@ -114,13 +115,13 @@ public class Main {
 
       if (cmdLine.hasOption("r")) {
         propertiesObject.setPostCopyRemove(true);
-        //				postCopyRemove = true;
+        // postCopyRemove = true;
       }
 
       if (cmdLine.hasOption("z")) {
-        //				String typeFromArgs = cmdLine.getOptionValue("z");
+        // String typeFromArgs = cmdLine.getOptionValue("z");
         propertiesObject.setDigestType(FileUtilsLocal.SetDigestType(cmdLine.getOptionValue("z")));
-        //				digestType = FileUtilsLocal.SetDigestType(typeFromArgs);
+        // digestType = FileUtilsLocal.SetDigestType(typeFromArgs);
       } else {
         showHelp(cliOptions);
       }
@@ -150,7 +151,7 @@ public class Main {
     }
 
     if (propertiesObject.isBackupFirst() == true) {
-      //			String backupFile = propertiesObject.getSourceLocation();
+      // String backupFile = propertiesObject.getSourceLocation();
       logger.debug("Backup first selected");
       FileUtilsLocal.populateBackupFilesList(propertiesObject);
       FileUtilsLocal.zipDirectory(propertiesObject);
@@ -183,68 +184,67 @@ public class Main {
 
     logger.debug(
         "Iterating through the source array, and checking if there is already a matching checksum in the target array");
-    for (int filecount = 0;
-        filecount < SourceFileArraySingleton.getInstance().getArray().size();
-        filecount++) {
-      String thisSourceFileName = SourceFileArraySingleton.getInstance().getArray().get(filecount);
-      File thisSourceFile = new File(thisSourceFileName);
-      String thisSourceChecksum =
-          FileUtilsLocal.getFileChecksum(propertiesObject.getDigestType(), thisSourceFile);
-      //			logger.debug(String.format("This source file checksum: %s - %s: %s", thisSourceChecksum,
-      // digestType, thisSourceFileName));
-      if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisSourceChecksum)) {
-        //				logger.debug(String.format("Hashmap already contains an entry for checksum: %s with
-        // filename of %s", thisSourceChecksum,
-        // TargetFileHashMapSingleton.getInstance().getMap().get(thisSourceChecksum)));
-        String existingfile =
-            TargetFileHashMapSingleton.getInstance().getMap().get(thisSourceChecksum);
-        String thisSourceFileNameOnly = FileUtilsLocal.getFileName(thisSourceFileName);
-        String thisTargetFileNameOnly = FileUtilsLocal.getFileName(existingfile);
 
-        if (thisSourceFileNameOnly.trim().equals(thisTargetFileNameOnly.trim())) {
-          // if this is a dryrun, add to the map, so that we can create an output file of all files
-          if (propertiesObject.isDryRun() == true) {
-            MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
-          }
-        } else {
-          logger.info(
-              String.format(
-                  "%s seems to be a copy of file:\r\n%s", thisSourceFileName, existingfile));
-          MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
-        }
+    // Use parallel stream for concurrent file processing (Java 21 optimized)
+    SourceFileArraySingleton.getInstance().getArray().parallelStream().forEach(thisSourceFileName -> {
+      try {
+        File thisSourceFile = new File(thisSourceFileName);
+        // Clone digest for thread-safety
+        MessageDigest threadDigest = (MessageDigest) propertiesObject.getDigestType().clone();
+        String thisSourceChecksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
 
-      } else {
-        String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
-        String targetFullPath = null;
-        String sourceBasePath = null;
+        // Synchronized access to shared collections
+        synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
+          if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisSourceChecksum)) {
+            String existingfile = TargetFileHashMapSingleton.getInstance().getMap().get(thisSourceChecksum);
+            String thisSourceFileNameOnly = FileUtilsLocal.getFileName(thisSourceFileName);
+            String thisTargetFileNameOnly = FileUtilsLocal.getFileName(existingfile);
 
-        if (propertiesObject.isKeepSourceStructure() == true) {
-          //					String[] sourceBasePath =
-          // thisSourceFileName.split(propertiesObject.getSourceLocation());
-          sourceBasePath = thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
-          String tempPath = FilenameUtils.getPath(sourceBasePath);
-          targetFullPath =
-              propertiesObject.getTargetLocation()
+            if (thisSourceFileNameOnly.trim().equals(thisTargetFileNameOnly.trim())) {
+              // if this is a dryrun, add to the map, so that we can create an output file of
+              // all files
+              if (propertiesObject.isDryRun() == true) {
+                MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
+              }
+            } else {
+              logger.info(
+                  String.format(
+                      "%s seems to be a copy of file:\r\n%s", thisSourceFileName, existingfile));
+              MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
+            }
+
+          } else {
+            String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
+            String targetFullPath = null;
+            String sourceBasePath = null;
+
+            if (propertiesObject.isKeepSourceStructure() == true) {
+              sourceBasePath = thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
+              String tempPath = FilenameUtils.getPath(sourceBasePath);
+              targetFullPath = propertiesObject.getTargetLocation()
                   + File.separatorChar
                   + tempPath
                   + File.separatorChar
                   + targetFileName;
-        } else {
-          targetFullPath =
-              propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
-        }
+            } else {
+              targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
+            }
 
-        File targetFile = new File(targetFullPath);
+            File targetFile = new File(targetFullPath);
 
-        CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
-        if (propertiesObject.isDryRun() == true) {
-          logger.info(
-              String.format("Would Copy File: %s to %s", thisSourceFileName, targetFullPath));
-        } else {
-          FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
+            CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
+            if (propertiesObject.isDryRun() == true) {
+              logger.info(
+                  String.format("Would Copy File: %s to %s", thisSourceFileName, targetFullPath));
+            } else {
+              FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
+            }
+          }
         }
+      } catch (Exception e) {
+        logger.error("Error processing source file: " + thisSourceFileName, e);
       }
-    }
+    });
 
     if (CopiedFileHashMapSingleton.getInstance().getMap().size() != 0
         || MatchingFileHashMapSingleton.getInstance().getMap().size() != 0) {
@@ -270,13 +270,14 @@ public class Main {
     logger.info("		COMPLETE		");
     logger.info("================================================");
 
-    //		// get the source file directory list
-    //		FileUtils.getSourceDirectoryContentsArray(sourceLocation);
-    //		logger.debug(String.format("Source File Singleton Size: %s",
+    // // get the source file directory list
+    // FileUtils.getSourceDirectoryContentsArray(sourceLocation);
+    // logger.debug(String.format("Source File Singleton Size: %s",
     // SourceFileArraySingleton.getInstance().getArray().size()));
     //
-    //		// get the checksums for the source files and put them in a map
-    //		FileUtils.createSourceFileChecksumMap(SourceFileArraySingleton.getInstance(), digestType);
+    // // get the checksums for the source files and put them in a map
+    // FileUtils.createSourceFileChecksumMap(SourceFileArraySingleton.getInstance(),
+    // digestType);
 
   }
 

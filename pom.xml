@@ -8,6 +8,10 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- Target Java release for compilation -->
+		<maven.compiler.release>21</maven.compiler.release>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
 	</properties>
 
 	<dependencies>
@@ -82,13 +86,17 @@
 		<finalName>sumcompare</finalName>
 		<plugins>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.3</version>
+				<!-- Use a recent plugin version that supports Java 21 -->
+				<version>3.11.0</version>
 				<configuration>
-					<compilerArguments>
-						<source>1.8</source>
-						<target>1.8</target>
-					</compilerArguments>
+					<!-- Use release to set source/target and platform APIs -->
+					<release>${maven.compiler.release}</release>
+					<!-- Fork to ensure the external JDK's javac is invoked (helps when in-process compiler doesn't support newer releases) -->
+					<fork>true</fork>
+					<!-- Use the JVM's javac executable explicitly so Maven can find it when PATH doesn't include javac -->
+					<executable>${java.home}/bin/javac</executable>
 				</configuration>
 			</plugin>
 
