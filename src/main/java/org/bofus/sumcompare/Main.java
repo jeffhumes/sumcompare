@@ -10,6 +10,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.bofus.sumcompare.localutil.FileTypeDetector;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
 import org.bofus.sumcompare.localutil.UserUtilities;
@@ -189,6 +190,11 @@ public class Main {
     SourceFileArraySingleton.getInstance().getArray().parallelStream().forEach(thisSourceFileName -> {
       try {
         File thisSourceFile = new File(thisSourceFileName);
+
+        // Detect file type
+        FileTypeDetector.FileType fileType = FileTypeDetector.detectFileType(thisSourceFile);
+        String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
+
         // Clone digest for thread-safety
         MessageDigest threadDigest = (MessageDigest) propertiesObject.getDigestType().clone();
         String thisSourceChecksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
@@ -209,7 +215,8 @@ public class Main {
             } else {
               logger.info(
                   String.format(
-                      "%s seems to be a copy of file:\r\n%s", thisSourceFileName, existingfile));
+                      "%s [%s] seems to be a copy of file:\r\n%s",
+                      thisSourceFileName, fileTypeDesc, existingfile));
               MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
             }
 
@@ -235,8 +242,10 @@ public class Main {
             CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
             if (propertiesObject.isDryRun() == true) {
               logger.info(
-                  String.format("Would Copy File: %s to %s", thisSourceFileName, targetFullPath));
+                  String.format("Would Copy File [%s]: %s to %s", fileTypeDesc, thisSourceFileName, targetFullPath));
             } else {
+              logger.info(
+                  String.format("Copying [%s]: %s", fileTypeDesc, thisSourceFile.getName()));
               FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
             }
           }

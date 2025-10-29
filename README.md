@@ -6,6 +6,7 @@ Intelligent file copying tool with checksum-based deduplication for Java.
 
 - **Checksum-based deduplication**: Compares files using cryptographic hashes to avoid copying duplicates
 - **Multiple hash algorithms**: Supports MD5, SHA1, XXHash32, and XXHash64
+- **File type detection**: Automatically identifies video and image files for enhanced logging
 - **Dry-run mode**: Preview operations without making changes
 - **Excel reports**: Generate detailed reports of copied files and duplicates
 - **Structure preservation**: Option to maintain source directory structure
@@ -111,6 +112,33 @@ This creates `target/sumcompare.jar` with all dependencies bundled.
    - Copied files
    - Target duplicates
    - Source duplicates
+
+## File Type Detection
+
+The tool automatically detects whether files are videos or images:
+
+### Supported Video Formats
+
+MP4, AVI, MOV, MKV, WMV, FLV, WebM, M4V, MPG, MPEG, 3GP, M2TS, MTS, TS, VOB, OGV, MXF, RM, RMVB, ASF, DivX, F4V, M2V
+
+### Supported Image Formats
+
+JPG, JPEG, PNG, GIF, BMP, TIFF, WebP, SVG, ICO, HEIC, HEIF, RAW, CR2, NEF, ORF, ARW, DNG, PSD, AI, EPS, XCF, EXR, HDR
+
+### Detection Methods
+
+1. **Extension-based**: Fast detection using file extensions
+2. **MIME type**: Fallback to content-based detection when extension is unclear
+
+### Log Output Enhancement
+
+File type information is included in log messages:
+
+```
+Would Copy File [Video]: /path/to/video.mp4 to /target/video.mp4
+Would Copy File [Image]: /path/to/photo.jpg to /target/photo.jpg
+Duplicate [Video]: clip.mov -> existing_clip.mov
+```
 
 ## License
 

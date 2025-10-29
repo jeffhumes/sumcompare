@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import org.bofus.sumcompare.localutil.FileTypeDetector;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
 import org.bofus.sumcompare.model.PropertiesObject;
@@ -71,6 +72,9 @@ public class SumCompareController {
 
         // Set default algorithm
         algorithmComboBox.getSelectionModel().select("XXHASH64");
+
+        // Initialize progress bar to 0
+        progressBar.setProgress(0.0);
 
         // Clear statistics
         resetStatistics();
@@ -325,6 +329,10 @@ public class SumCompareController {
             }
 
             File thisSourceFile = new File(sourceFile);
+
+            // Detect file type
+            String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
+
             MessageDigest threadDigest = (MessageDigest) props.getDigestType().clone();
             String checksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
 
@@ -336,7 +344,9 @@ public class SumCompareController {
                 if (sourceFileName.equals(targetFileName)) {
                     MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                 } else {
-                    Platform.runLater(() -> appendLog("Duplicate: " + sourceFile + " -> " + existingFile));
+                    String logMsg = String.format("Duplicate [%s]: %s -> %s", fileTypeDesc, sourceFileName,
+                            existingFile);
+                    Platform.runLater(() -> appendLog(logMsg));
                     MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                 }
             } else {
@@ -346,12 +356,14 @@ public class SumCompareController {
 
                 if (props.isDryRun()) {
                     String fileName = thisSourceFile.getName();
-                    Platform.runLater(() -> appendLog("Would copy: " + fileName));
+                    String logMsg = String.format("Would copy [%s]: %s", fileTypeDesc, fileName);
+                    Platform.runLater(() -> appendLog(logMsg));
                 } else {
                     File targetFile = new File(targetPath);
                     org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile, props.isPreserveFileDate());
                     String fileName = thisSourceFile.getName();
-                    Platform.runLater(() -> appendLog("Copied: " + fileName));
+                    String logMsg = String.format("Copied [%s]: %s", fileTypeDesc, fileName);
+                    Platform.runLater(() -> appendLog(logMsg));
                 }
 
                 updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
