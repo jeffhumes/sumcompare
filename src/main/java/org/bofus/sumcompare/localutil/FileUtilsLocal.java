@@ -61,6 +61,10 @@ public class FileUtilsLocal {
       returnData = MessageDigest.getInstance("MD5");
     } else if (typeFromArgs.equalsIgnoreCase("SHA1")) {
       returnData = MessageDigest.getInstance("SHA1");
+    } else if (typeFromArgs.equalsIgnoreCase("XXHASH32")) {
+      returnData = new XXHashMessageDigest("XXHASH32");
+    } else if (typeFromArgs.equalsIgnoreCase("XXHASH64")) {
+      returnData = new XXHashMessageDigest("XXHASH64");
     } else {
       logger.error(
           String.format("Unknown digest type %s cannot continue.  Exiting...", typeFromArgs));

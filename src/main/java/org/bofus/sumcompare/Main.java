@@ -60,7 +60,7 @@ public class Main {
         "z",
         "chksumtype",
         true,
-        "The type of checksum data to use for comparison (SHA1, MD5)	<REQUIRED>");
+        "The type of checksum data to use for comparison (SHA1, MD5, XXHASH32, XXHASH64)	<REQUIRED>");
     cliOptions.addOption("h", "help", false, "Shows this help screen");
 
     // -------------------------------------------------------------
