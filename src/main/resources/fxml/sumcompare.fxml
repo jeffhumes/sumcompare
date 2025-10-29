@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.bofus.sumcompare.gui.SumCompareController"
+      spacing="10" styleClass="root">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <!-- Title -->
+    <Label text="SumCompare - Intelligent File Deduplication" styleClass="title">
+        <font>
+            <Font name="System Bold" size="18"/>
+        </font>
+    </Label>
+
+    <Separator/>
+
+    <!-- Source Directory -->
+    <VBox spacing="5">
+        <Label text="Source Directory:" styleClass="label-header"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField fx:id="sourceTextField" promptText="Select source directory..." 
+                      HBox.hgrow="ALWAYS" editable="false"/>
+            <Button fx:id="sourceBrowseButton" text="Browse..." onAction="#onSourceBrowse" 
+                   minWidth="100"/>
+        </HBox>
+    </VBox>
+
+    <!-- Target Directory -->
+    <VBox spacing="5">
+        <Label text="Target Directory:" styleClass="label-header"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField fx:id="targetTextField" promptText="Select target directory..." 
+                      HBox.hgrow="ALWAYS" editable="false"/>
+            <Button fx:id="targetBrowseButton" text="Browse..." onAction="#onTargetBrowse" 
+                   minWidth="100"/>
+        </HBox>
+    </VBox>
+
+    <!-- Checksum Algorithm -->
+    <VBox spacing="5">
+        <Label text="Checksum Algorithm:" styleClass="label-header"/>
+        <ComboBox fx:id="algorithmComboBox" prefWidth="200"/>
+    </VBox>
+
+    <!-- Options -->
+    <VBox spacing="8">
+        <Label text="Options:" styleClass="label-header"/>
+        <CheckBox fx:id="dryRunCheckBox" text="Dry Run (preview without copying)" selected="true"/>
+        <CheckBox fx:id="keepStructureCheckBox" text="Keep source directory structure"/>
+        <CheckBox fx:id="backupCheckBox" text="Backup source first"/>
+        <CheckBox fx:id="preserveDateCheckBox" text="Preserve file dates"/>
+        <CheckBox fx:id="createReportCheckBox" text="Create Excel report"/>
+    </VBox>
+
+    <Separator/>
+
+    <!-- Action Buttons -->
+    <HBox spacing="10" alignment="CENTER">
+        <Button fx:id="startButton" text="Start Comparison" onAction="#onStart" 
+               styleClass="primary-button" minWidth="150" defaultButton="true"/>
+        <Button fx:id="cancelButton" text="Cancel" onAction="#onCancel" 
+               minWidth="100" disable="true"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Help" onAction="#onHelp" minWidth="80"/>
+    </HBox>
+
+    <!-- Progress Area -->
+    <VBox spacing="5" VBox.vgrow="ALWAYS">
+        <Label text="Progress:" styleClass="label-header"/>
+        <ProgressBar fx:id="progressBar" prefWidth="Infinity"/>
+        <Label fx:id="statusLabel" text="Ready" styleClass="status-label"/>
+        
+        <!-- Log Output -->
+        <TextArea fx:id="logTextArea" editable="false" wrapText="true" 
+                 VBox.vgrow="ALWAYS" styleClass="log-area"
+                 promptText="Log output will appear here..."/>
+    </VBox>
+
+    <!-- Statistics -->
+    <HBox spacing="20" alignment="CENTER_LEFT" styleClass="stats-box">
+        <VBox spacing="2" alignment="CENTER">
+            <Label text="Files Scanned" styleClass="stat-label"/>
+            <Label fx:id="scannedCountLabel" text="0" styleClass="stat-value"/>
+        </VBox>
+        <Separator orientation="VERTICAL"/>
+        <VBox spacing="2" alignment="CENTER">
+            <Label text="Files Copied" styleClass="stat-label"/>
+            <Label fx:id="copiedCountLabel" text="0" styleClass="stat-value"/>
+        </VBox>
+        <Separator orientation="VERTICAL"/>
+        <VBox spacing="2" alignment="CENTER">
+            <Label text="Duplicates Found" styleClass="stat-label"/>
+            <Label fx:id="duplicatesCountLabel" text="0" styleClass="stat-value"/>
+        </VBox>
+        <Separator orientation="VERTICAL"/>
+        <VBox spacing="2" alignment="CENTER">
+            <Label text="Elapsed Time" styleClass="stat-label"/>
+            <Label fx:id="elapsedTimeLabel" text="00:00:00" styleClass="stat-value"/>
+        </VBox>
+    </HBox>
+</VBox>
