@@ -68,15 +68,17 @@ public class SumCompareController {
     public void initialize() {
         // Populate algorithm choices
         algorithmComboBox.getItems().addAll("XXHASH64", "XXHASH32", "SHA1", "MD5");
-        
+
         // Set default algorithm
         algorithmComboBox.getSelectionModel().select("XXHASH64");
-        
+
         // Clear statistics
         resetStatistics();
-        
+
         logger.info("SumCompareController initialized");
-    }    @FXML
+    }
+
+    @FXML
     private void onSourceBrowse() {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Source Directory");
