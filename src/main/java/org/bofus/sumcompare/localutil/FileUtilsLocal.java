@@ -29,6 +29,8 @@ public class FileUtilsLocal {
   private static final Logger logger = LoggerFactory.getLogger(FileUtilsLocal.class);
 
   public static String getFileChecksum(MessageDigest digest, File file) throws IOException {
+    long startTime = System.nanoTime();
+
     // Use try-with-resources for automatic stream closure
     // Increased buffer size from 1KB to 64KB for better I/O performance
     try (FileInputStream fis = new FileInputStream(file)) {
@@ -49,6 +51,15 @@ public class FileUtilsLocal {
     for (byte b : bytes) {
       sb.append(String.format("%02x", b));
     }
+
+    long endTime = System.nanoTime();
+    long durationMs = (endTime - startTime) / 1_000_000;
+    long fileSizeBytes = file.length();
+    double fileSizeMB = fileSizeBytes / (1024.0 * 1024.0);
+    double throughputMBps = durationMs > 0 ? (fileSizeMB / (durationMs / 1000.0)) : 0;
+
+    logger.debug(String.format("Checksum computed for %s (%.2f MB) in %d ms (%.2f MB/s) - Algorithm: %s",
+        file.getName(), fileSizeMB, durationMs, throughputMBps, digest.getAlgorithm()));
 
     // return complete hash
     return sb.toString();

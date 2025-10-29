@@ -18,11 +18,19 @@
         },
         {
             "type": "java",
-            "name": "Main",
+            "name": "Dry Run with MD5",
             "request": "launch",
             "mainClass": "org.bofus.sumcompare.Main",
             "projectName": "sumcompare",
             "args": ["-d", "-k", "-z", "MD5", "-s", "/home/jeffhumes/ORIGINAL_VIDEOS/PHONE_DCIM","-t", "/home/jeffhumes/ORIGINAL_VIDEOS/MOTORCYCLES"]
+        },
+        {
+            "type": "java",
+            "name": "Dry Run with XXHASH64",
+            "request": "launch",
+            "mainClass": "org.bofus.sumcompare.Main",
+            "projectName": "sumcompare",
+            "args": ["-d", "-k", "-z", "XXHASH64", "-s", "/home/jeffhumes/ORIGINAL_VIDEOS/PHONE_DCIM","-t", "/home/jeffhumes/ORIGINAL_VIDEOS/MOTORCYCLES"]
         }
     ]
 }
