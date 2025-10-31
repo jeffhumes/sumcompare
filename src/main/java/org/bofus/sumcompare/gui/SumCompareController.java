@@ -22,6 +22,10 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Controller for the SumCompare GUI.
@@ -38,6 +42,8 @@ public class SumCompareController {
     private Button targetBrowseButton;
     @FXML
     private ComboBox<String> algorithmComboBox;
+    @FXML
+    private Spinner<Integer> threadCountSpinner;
     @FXML
     private CheckBox dryRunCheckBox;
     @FXML
@@ -80,6 +86,12 @@ public class SumCompareController {
 
         // Set default algorithm
         algorithmComboBox.getSelectionModel().select("XXHASH64");
+
+        // Configure thread count spinner
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(
+                1, availableProcessors * 2, availableProcessors);
+        threadCountSpinner.setValueFactory(valueFactory);
 
         // Initialize progress bar to 0
         progressBar.setProgress(0.0);
@@ -147,13 +159,23 @@ public class SumCompareController {
             return;
         }
 
-        if (targetTextField.getText() == null || targetTextField.getText().trim().isEmpty()) {
-            showError("Please select a target directory");
-            return;
+        if (!sourceDuplicateCheckBox.isSelected()) {
+            if (targetTextField.getText() == null || targetTextField.getText().trim().isEmpty()) {
+                showError("Please select a target directory");
+                return;
+            }
         }
 
         File sourceDir = new File(sourceTextField.getText());
-        File targetDir = new File(targetTextField.getText());
+        File targetDir = null;
+
+        // NOTE: if the source duplicate check is enabled, the target directory is the
+        // same as the source
+        if (!sourceDuplicateCheckBox.isSelected()) {
+            targetDir = new File(targetTextField.getText());
+        } else {
+            targetDir = new File(sourceTextField.getText());
+        }
 
         if (!sourceDir.exists() || !sourceDir.isDirectory()) {
             showError("Source directory does not exist or is not a directory");
@@ -267,25 +289,48 @@ public class SumCompareController {
                         updateMessage("Backup completed");
                     }
 
-                    // Step 2: Scan target directory
-                    updateMessage("Scanning target directory...");
-                    FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
-                    int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
-                    updateMessage("Found " + targetCount + " files in target");
+                    // Step 2 & 4: Scan target and source directories in parallel
+                    updateMessage("Scanning directories in parallel...");
 
-                    // Step 3: Compute target checksums
-                    updateMessage("Computing target checksums...");
-                    FileUtilsLocal.createTargetFileChecksumMap(
-                            TargetFileArraySingleton.getInstance(),
-                            props.getDigestType());
-                    updateMessage("Target checksums completed");
+                    Thread targetScanThread = new Thread(() -> {
+                        try {
+                            FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
+                            int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
+                            updateMessage("Found " + targetCount + " files in target");
 
-                    // Step 4: Scan source directory
-                    updateMessage("Scanning source directory...");
-                    FileUtilsLocal.getSourceDirectoryContentsArray(props.getSourceLocation());
-                    int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
-                    updateMessage("Found " + sourceCount + " files in source");
-                    updateScannedCount(sourceCount);
+                            // Step 3: Compute target checksums
+                            updateMessage("Computing target checksums...");
+                            FileUtilsLocal.createTargetFileChecksumMap(
+                                    TargetFileArraySingleton.getInstance(),
+                                    props.getDigestType());
+                            updateMessage("Target checksums completed");
+                        } catch (Exception e) {
+                            log.error("Error scanning target directory", e);
+                            updateMessage("ERROR scanning target: " + e.getMessage());
+                        }
+                    });
+
+                    Thread sourceScanThread = new Thread(() -> {
+                        try {
+                            FileUtilsLocal.getSourceDirectoryContentsArray(props.getSourceLocation());
+                            int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
+                            updateMessage("Found " + sourceCount + " files in source");
+                            Platform.runLater(() -> updateScannedCount(sourceCount));
+                        } catch (Exception e) {
+                            log.error("Error scanning source directory", e);
+                            updateMessage("ERROR scanning source: " + e.getMessage());
+                        }
+                    });
+
+                    // Start both threads
+                    targetScanThread.start();
+                    sourceScanThread.start();
+
+                    // Wait for both to complete
+                    targetScanThread.join();
+                    sourceScanThread.join();
+
+                    updateMessage("Directory scanning completed");
 
                     // Step 5: Process source files
                     updateMessage("Processing source files...");
@@ -370,54 +415,70 @@ public class SumCompareController {
     }
 
     private void processSourceFiles(PropertiesObject props) throws Exception {
-        for (String sourceFile : SourceFileArraySingleton.getInstance().getArray()) {
-            if (currentTask.isCancelled()) {
-                break;
-            }
+        int threadCount = threadCountSpinner.getValue();
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        List<String> sourceFiles = SourceFileArraySingleton.getInstance().getArray();
+        CountDownLatch latch = new CountDownLatch(sourceFiles.size());
+        
+        for (String sourceFile : sourceFiles) {
+            executor.submit(() -> {
+                try {
+                    if (currentTask.isCancelled()) {
+                        return;
+                    }
 
-            File thisSourceFile = new File(sourceFile);
+                    File thisSourceFile = new File(sourceFile);
 
-            // Detect file type
-            String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
+                    // Detect file type
+                    String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
 
-            MessageDigest threadDigest = (MessageDigest) props.getDigestType().clone();
-            String checksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
+                    MessageDigest threadDigest = (MessageDigest) props.getDigestType().clone();
+                    String checksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
 
-            if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(checksum)) {
-                String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(checksum);
-                String sourceFileName = FileUtilsLocal.getFileName(sourceFile);
-                String targetFileName = FileUtilsLocal.getFileName(existingFile);
+                    if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(checksum)) {
+                        String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(checksum);
+                        String sourceFileName = FileUtilsLocal.getFileName(sourceFile);
+                        String targetFileName = FileUtilsLocal.getFileName(existingFile);
 
-                if (sourceFileName.equals(targetFileName)) {
-                    MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
-                } else {
-                    String logMsg = String.format("Duplicate [%s]: %s -> %s", fileTypeDesc, sourceFileName,
-                            existingFile);
-                    Platform.runLater(() -> appendLog(logMsg));
-                    MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
+                        if (sourceFileName.equals(targetFileName)) {
+                            MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
+                        } else {
+                            String logMsg = String.format("Duplicate [%s]: %s -> %s", fileTypeDesc, sourceFileName,
+                                    existingFile);
+                            Platform.runLater(() -> appendLog(logMsg));
+                            MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
+                        }
+                    } else {
+                        // File needs to be copied
+                        String targetPath = calculateTargetPath(sourceFile, props);
+                        CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
+
+                        if (props.isDryRun()) {
+                            String fileName = thisSourceFile.getName();
+                            String logMsg = String.format("Would copy [%s]: %s", fileTypeDesc, fileName);
+                            Platform.runLater(() -> appendLog(logMsg));
+                        } else {
+                            File targetFile = new File(targetPath);
+                            org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile, props.isPreserveFileDate());
+                            String fileName = thisSourceFile.getName();
+                            String logMsg = String.format("Copied [%s]: %s", fileTypeDesc, fileName);
+                            Platform.runLater(() -> appendLog(logMsg));
+                        }
+
+                        updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
+                    }
+
+                    updateDuplicatesCount(MatchingFileHashMapSingleton.getInstance().getMap().size());
+                } catch (Exception e) {
+                    log.error("Error processing file: " + sourceFile, e);
+                } finally {
+                    latch.countDown();
                 }
-            } else {
-                // File needs to be copied
-                String targetPath = calculateTargetPath(sourceFile, props);
-                CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
-
-                if (props.isDryRun()) {
-                    String fileName = thisSourceFile.getName();
-                    String logMsg = String.format("Would copy [%s]: %s", fileTypeDesc, fileName);
-                    Platform.runLater(() -> appendLog(logMsg));
-                } else {
-                    File targetFile = new File(targetPath);
-                    org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile, props.isPreserveFileDate());
-                    String fileName = thisSourceFile.getName();
-                    String logMsg = String.format("Copied [%s]: %s", fileTypeDesc, fileName);
-                    Platform.runLater(() -> appendLog(logMsg));
-                }
-
-                updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
-            }
-
-            updateDuplicatesCount(MatchingFileHashMapSingleton.getInstance().getMap().size());
+            });
         }
+        
+        executor.shutdown();
+        latch.await();
     }
 
     private String calculateTargetPath(String sourceFile, PropertiesObject props) {
@@ -465,6 +526,7 @@ public class SumCompareController {
             sourceTextField.setDisable(!enable);
             targetTextField.setDisable(!enable);
             algorithmComboBox.setDisable(!enable);
+            threadCountSpinner.setDisable(!enable);
             dryRunCheckBox.setDisable(!enable);
             keepStructureCheckBox.setDisable(!enable);
             backupCheckBox.setDisable(!enable);

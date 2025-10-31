@@ -151,38 +151,57 @@ public class Main {
       throw e;
     }
 
+    // Step 1: Backup if requested
     if (propertiesObject.isBackupFirst() == true) {
-      // String backupFile = propertiesObject.getSourceLocation();
-      log.debug("Backup first selected");
-      FileUtilsLocal.populateBackupFilesList(propertiesObject);
+      log.info("Creating backup of source directory...");
       FileUtilsLocal.zipDirectory(propertiesObject);
+      log.info("Backup completed");
     } else {
       log.warn(
           "Backup first not specified on the command line, we will not backup the source files first!!!");
     }
 
-    // get the target file directory list
-    log.info("Getting the file list for the target location...");
-    FileUtilsLocal.getTargetDirectoryContentsArray(propertiesObject.getTargetLocation());
-    log.debug(
-        String.format(
-            "Target File Singleton Size: %s",
-            TargetFileArraySingleton.getInstance().getArray().size()));
+    // Step 2 & 4: Scan target and source directories in parallel
+    log.info("Scanning directories in parallel...");
 
-    // get the checksums for the target files and put them in a map
-    log.info(
-        "Getting the checksums for the target location files, depending on the number and size of files this may take a while...");
-    FileUtilsLocal.createTargetFileChecksumMap(
-        TargetFileArraySingleton.getInstance(), propertiesObject.getDigestType());
+    Thread targetScanThread = new Thread(() -> {
+      try {
+        FileUtilsLocal.getTargetDirectoryContentsArray(propertiesObject.getTargetLocation());
+        int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
+        log.info("Found " + targetCount + " files in target");
 
-    // get the source file directory list
-    log.info("Getting the file list  for the source location...");
-    FileUtilsLocal.getSourceDirectoryContentsArray(propertiesObject.getSourceLocation());
-    log.debug(
-        String.format(
-            "Source File Singleton Size: %s",
-            SourceFileArraySingleton.getInstance().getArray().size()));
+        // Step 3: Compute target checksums
+        log.info("Computing target checksums...");
+        FileUtilsLocal.createTargetFileChecksumMap(
+            TargetFileArraySingleton.getInstance(),
+            propertiesObject.getDigestType());
+        log.info("Target checksums completed");
+      } catch (Exception e) {
+        log.error("Error scanning target directory", e);
+      }
+    });
 
+    Thread sourceScanThread = new Thread(() -> {
+      try {
+        FileUtilsLocal.getSourceDirectoryContentsArray(propertiesObject.getSourceLocation());
+        int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
+        log.info("Found " + sourceCount + " files in source");
+      } catch (Exception e) {
+        log.error("Error scanning source directory", e);
+      }
+    });
+
+    // Start both threads
+    targetScanThread.start();
+    sourceScanThread.start();
+
+    // Wait for both to complete
+    targetScanThread.join();
+    sourceScanThread.join();
+
+    log.info("Directory scanning completed");
+
+    log.info("Processing source files...");
     log.debug(
         "Iterating through the source array, and checking if there is already a matching checksum in the target array");
 
@@ -192,7 +211,6 @@ public class Main {
         File thisSourceFile = new File(thisSourceFileName);
 
         // Detect file type
-        FileTypeDetector.FileType fileType = FileTypeDetector.detectFileType(thisSourceFile);
         String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
 
         // Clone digest for thread-safety
@@ -255,28 +273,22 @@ public class Main {
       }
     });
 
-    if (CopiedFileHashMapSingleton.getInstance().getMap().size() != 0
-        || MatchingFileHashMapSingleton.getInstance().getMap().size() != 0) {
-      log.debug(
-          String.format(
-              "%s files copied ", CopiedFileHashMapSingleton.getInstance().getMap().size()));
-      log.debug(
-          String.format(
-              "%s files not copied as there were duplicates in the target location",
-              MatchingFileHashMapSingleton.getInstance().getMap().size()));
-      if (propertiesObject.isCreateOutputFile() == true) {
-        log.debug("Creating output file");
-        ReportUtils.createOutputExcel();
-      }
-    } else {
-      if (propertiesObject.isCreateOutputFile() == true) {
-        log.debug(
-            "There were no files copied, and no duplicate files in the target with different names, no use creating a report");
-      }
+    // Generate report if requested
+    if (propertiesObject.isCreateOutputFile() == true) {
+      log.info("Generating Excel report...");
+      ReportUtils.createOutputExcel();
+      log.info("Report created: Copy_Output.xlsx");
     }
 
+    // Update final statistics
+    int copied = CopiedFileHashMapSingleton.getInstance().getMap().size();
+    int duplicates = MatchingFileHashMapSingleton.getInstance().getMap().size();
+
     log.info("================================================");
-    log.info("		COMPLETE		");
+    log.info("           COMPLETED SUCCESSFULLY               ");
+    log.info("================================================");
+    log.info(String.format("Files copied: %d", copied));
+    log.info(String.format("Duplicates found: %d", duplicates));
     log.info("================================================");
 
     // // get the source file directory list

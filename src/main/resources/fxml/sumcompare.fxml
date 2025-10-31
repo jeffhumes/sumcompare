@@ -47,7 +47,11 @@
     <!-- Checksum Algorithm -->
     <VBox spacing="5">
         <Label text="Checksum Algorithm:" styleClass="label-header"/>
-        <ComboBox fx:id="algorithmComboBox" prefWidth="200"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <ComboBox fx:id="algorithmComboBox" prefWidth="200"/>
+            <Label text="Threads:"/>
+            <Spinner fx:id="threadCountSpinner" prefWidth="80" editable="true"/>
+        </HBox>
     </VBox>
 
     <!-- Options -->
