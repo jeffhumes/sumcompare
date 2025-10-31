@@ -3,6 +3,9 @@ package org.bofus.sumcompare.gui;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -162,6 +165,31 @@ public class SumCompareController {
             appendLog("\n=== OPERATION CANCELLED BY USER ===");
             statusLabel.setText("Cancelled");
             enableControls(true);
+        }
+    }
+
+    @FXML
+    private void onViewLog() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/logviewer.fxml"));
+            Parent root = loader.load();
+            
+            Stage logStage = new Stage();
+            logStage.setTitle("SumCompare - Application Log");
+            
+            Scene scene = new Scene(root, 900, 600);
+            scene.getStylesheets().add(getClass().getResource("/css/styles.css").toExternalForm());
+            logStage.setScene(scene);
+            
+            // Handle window close to stop the tail thread
+            LogViewerController controller = loader.getController();
+            logStage.setOnCloseRequest(event -> controller.shutdown());
+            
+            logStage.show();
+            logger.info("Log viewer window opened");
+        } catch (IOException e) {
+            logger.error("Failed to open log viewer", e);
+            showError("Failed to open log viewer: " + e.getMessage());
         }
     }
 

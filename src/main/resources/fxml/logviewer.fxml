@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.bofus.sumcompare.gui.LogViewerController"
+      spacing="10" styleClass="root">
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+    </padding>
+
+    <!-- Title and Controls -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Application Log (Real-time)" styleClass="label-header">
+            <font>
+                <Font name="System Bold" size="14"/>
+            </font>
+        </Label>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Clear Display" onAction="#onClear" minWidth="100"/>
+        <Button text="Refresh" onAction="#onRefresh" minWidth="80"/>
+        <Button text="Close" onAction="#onClose" minWidth="80"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Log Text Area -->
+    <TextArea fx:id="logTextArea" editable="false" wrapText="false" 
+             VBox.vgrow="ALWAYS" styleClass="log-area"
+             style="-fx-font-family: 'Monospaced', 'Courier New', monospace; -fx-font-size: 11px;">
+    </TextArea>
+
+    <!-- Info Label -->
+    <Label text="Log file location: ~/.sumcompare/logs/sumcompare.log" 
+           style="-fx-text-fill: #7f8c8d; -fx-font-size: 10px;"/>
+</VBox>
