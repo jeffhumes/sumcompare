@@ -7,47 +7,38 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * @author a0868055
+ * @author Jeff Humes
  *
  */
-public class SourceFileBackupArraySingleton
-{
-        private static final Logger                     logger  = LoggerFactory.getLogger(SourceFileBackupArraySingleton.class);
+@Slf4j
+public class SourceFileBackupArraySingleton {
         private static SourceFileBackupArraySingleton sourceBackupFileListSingleton;
-        private ArrayList<File>       list    = null;
+        private ArrayList<File> list = null;
 
-        private SourceFileBackupArraySingleton()
-        {
+        private SourceFileBackupArraySingleton() {
                 list = new ArrayList<File>();
         }
 
-        public static SourceFileBackupArraySingleton getInstance() throws IOException, SQLException, PropertyVetoException
-        {
-                if (sourceBackupFileListSingleton == null)
-                {
-                	sourceBackupFileListSingleton = new SourceFileBackupArraySingleton();
+        public static SourceFileBackupArraySingleton getInstance()
+                        throws IOException, SQLException, PropertyVetoException {
+                if (sourceBackupFileListSingleton == null) {
+                        sourceBackupFileListSingleton = new SourceFileBackupArraySingleton();
                         return sourceBackupFileListSingleton;
-                }
-                else
-                {
+                } else {
                         return sourceBackupFileListSingleton;
                 }
         }
 
         // retrieve array from anywhere
-        public ArrayList<File> getArray()
-        {
+        public ArrayList<File> getArray() {
                 return this.list;
         }
 
-        //Add element to array
-        public void addToArray(File file)
-        {
+        // Add element to array
+        public void addToArray(File file) {
                 list.add(file);
         }
 

@@ -30,6 +30,7 @@
             <Button fx:id="sourceBrowseButton" text="Browse..." onAction="#onSourceBrowse" 
                    minWidth="100"/>
         </HBox>
+        <CheckBox fx:id="sourceDuplicateCheckBox" text="Check for duplicates in source only" selected="false"/>
     </VBox>
 
     <!-- Target Directory -->

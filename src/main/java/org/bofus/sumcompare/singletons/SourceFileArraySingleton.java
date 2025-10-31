@@ -6,47 +6,37 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * @author a0868055
+ * @author Jeff Humes
  *
  */
-public class SourceFileArraySingleton
-{
-        private static final Logger                     logger  = LoggerFactory.getLogger(SourceFileArraySingleton.class);
+@Slf4j
+public class SourceFileArraySingleton {
         private static SourceFileArraySingleton sourceFileListSingleton;
-        private ArrayList<String>       list    = null;
+        private ArrayList<String> list = null;
 
-        private SourceFileArraySingleton()
-        {
+        private SourceFileArraySingleton() {
                 list = new ArrayList<String>();
         }
 
-        public static SourceFileArraySingleton getInstance() throws IOException, SQLException, PropertyVetoException
-        {
-                if (sourceFileListSingleton == null)
-                {
-                	sourceFileListSingleton = new SourceFileArraySingleton();
+        public static SourceFileArraySingleton getInstance() throws IOException, SQLException, PropertyVetoException {
+                if (sourceFileListSingleton == null) {
+                        sourceFileListSingleton = new SourceFileArraySingleton();
                         return sourceFileListSingleton;
-                }
-                else
-                {
+                } else {
                         return sourceFileListSingleton;
                 }
         }
 
         // retrieve array from anywhere
-        public ArrayList<String> getArray()
-        {
+        public ArrayList<String> getArray() {
                 return this.list;
         }
 
-        //Add element to array
-        public void addToArray(String errorObject)
-        {
+        // Add element to array
+        public void addToArray(String errorObject) {
                 list.add(errorObject);
         }
 

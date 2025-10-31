@@ -22,11 +22,11 @@ import org.bofus.sumcompare.singletons.SourceFileBackupArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileHashMapSingleton;
 import org.bofus.sumcompare.singletons.TargetFileArraySingleton;
 import org.bofus.sumcompare.singletons.TargetFileHashMapSingleton;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class FileUtilsLocal {
-  private static final Logger logger = LoggerFactory.getLogger(FileUtilsLocal.class);
 
   public static String getFileChecksum(MessageDigest digest, File file) throws IOException {
     long startTime = System.nanoTime();
@@ -58,7 +58,7 @@ public class FileUtilsLocal {
     double fileSizeMB = fileSizeBytes / (1024.0 * 1024.0);
     double throughputMBps = durationMs > 0 ? (fileSizeMB / (durationMs / 1000.0)) : 0;
 
-    logger.debug(String.format("Checksum computed for %s (%.2f MB) in %d ms (%.2f MB/s) - Algorithm: %s",
+    log.debug(String.format("Checksum computed for %s (%.2f MB) in %d ms (%.2f MB/s) - Algorithm: %s",
         file.getName(), fileSizeMB, durationMs, throughputMBps, digest.getAlgorithm()));
 
     // return complete hash
@@ -77,7 +77,7 @@ public class FileUtilsLocal {
     } else if (typeFromArgs.equalsIgnoreCase("XXHASH64")) {
       returnData = new XXHashMessageDigest("XXHASH64");
     } else {
-      logger.error(
+      log.error(
           String.format("Unknown digest type %s cannot continue.  Exiting...", typeFromArgs));
       System.exit(98);
     }
@@ -93,10 +93,10 @@ public class FileUtilsLocal {
       File[] files = dir.listFiles();
       for (File file : files) {
         if (file.isDirectory()) {
-          // logger.debug(String.format("Directory: %s", file.getCanonicalPath()));
+          // log.debug(String.format("Directory: %s", file.getCanonicalPath()));
           getSourceDirectoryContentsArray(file.toString());
         } else {
-          // logger.debug(String.format("File: %s", file.getCanonicalPath()));
+          // log.debug(String.format("File: %s", file.getCanonicalPath()));
           SourceFileArraySingleton.getInstance().addToArray(file.getCanonicalPath());
         }
       }
@@ -120,7 +120,7 @@ public class FileUtilsLocal {
         // Synchronized access to shared HashMap
         synchronized (SourceFileHashMapSingleton.getInstance().getMap()) {
           if (SourceFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum)) {
-            logger.debug(
+            log.debug(
                 String.format(
                     "Hashmap already contains an entry for checksum: %s with filename of %s",
                     thisFileChecksum,
@@ -130,11 +130,11 @@ public class FileUtilsLocal {
           }
         }
       } catch (Exception e) {
-        logger.error("Error processing file: " + fileString, e);
+        log.error("Error processing file: " + fileString, e);
       }
     });
 
-    logger.debug(
+    log.debug(
         String.format(
             "Hashmap size for source files: %s",
             SourceFileHashMapSingleton.getInstance().getMap().size()));
@@ -148,10 +148,10 @@ public class FileUtilsLocal {
       File[] files = dir.listFiles();
       for (File file : files) {
         if (file.isDirectory()) {
-          // logger.debug(String.format("Directory: %s", file.getCanonicalPath()));
+          // log.debug(String.format("Directory: %s", file.getCanonicalPath()));
           getTargetDirectoryContentsArray(file.toString());
         } else {
-          // logger.debug(String.format("File: %s", file.getCanonicalPath()));
+          // log.debug(String.format("File: %s", file.getCanonicalPath()));
           TargetFileArraySingleton.getInstance().addToArray(file.getCanonicalPath());
         }
       }
@@ -176,7 +176,7 @@ public class FileUtilsLocal {
         synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
           if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum)) {
             String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
-            logger.debug(
+            log.debug(
                 String.format(
                     "Hashmap already contains an entry for checksum: %s with filename of %s",
                     thisFileChecksum, existingFile));
@@ -191,15 +191,15 @@ public class FileUtilsLocal {
           }
         }
       } catch (Exception e) {
-        logger.error("Error processing file: " + fileString, e);
+        log.error("Error processing file: " + fileString, e);
       }
     });
 
-    logger.debug(
+    log.debug(
         String.format(
             "Hashmap size for target files: %s",
             TargetFileHashMapSingleton.getInstance().getMap().size()));
-    logger.debug(
+    log.debug(
         String.format(
             "Hashmap size for duplicate/existing target files: %s",
             ExistingTargetFileObjectArraySingleton.getInstance().getArray().size()));
@@ -209,13 +209,13 @@ public class FileUtilsLocal {
     String filePathString = null;
     File filePath = null;
 
-    // logger.debug(String.format("getting path for file: %s", file));
+    // log.debug(String.format("getting path for file: %s", file));
     try {
       filePathString = FilenameUtils.getFullPathNoEndSeparator(file);
-      // logger.debug(String.format("Determined path: %s", filePathString));
+      // log.debug(String.format("Determined path: %s", filePathString));
       filePath = new File(filePathString);
     } catch (Exception e) {
-      logger.error(e.getMessage());
+      log.error(e.getMessage());
     }
 
     return filePath.toString();
@@ -225,12 +225,12 @@ public class FileUtilsLocal {
     String fileNameString = null;
     File fileName = null;
 
-    // logger.debug(String.format("getting path for file: %s", file));
+    // log.debug(String.format("getting path for file: %s", file));
     try {
       fileNameString = FilenameUtils.getName(file);
       fileName = new File(fileNameString);
     } catch (Exception e) {
-      logger.error(e.getMessage());
+      log.error(e.getMessage());
     }
 
     return fileName.toString();
@@ -249,7 +249,7 @@ public class FileUtilsLocal {
       else
         populateBackupFilesList(propertiesObject);
     }
-    logger.debug(
+    log.debug(
         String.format(
             "Number of files in backup array: %s for directory: %s",
             SourceFileBackupArraySingleton.getInstance().getArray().size(),
@@ -263,7 +263,7 @@ public class FileUtilsLocal {
     // File backupFileName = new File(tempDir + File.separator +
     // "Source_Backup.zip");
     String backupFileName = tempDir + File.separator + "Source_Backup.zip";
-    logger.info(String.format("Backing up to: %s", backupFileName));
+    log.info(String.format("Backing up to: %s", backupFileName));
     try {
       populateBackupFilesList(propertiesObject);
 
@@ -277,7 +277,7 @@ public class FileUtilsLocal {
       ArrayList<File> sourceFilesToBackup = SourceFileBackupArraySingleton.getInstance().getArray();
       for (File filePath : sourceFilesToBackup) {
         try {
-          logger.debug(String.format("Adding to zip file: %s", filePath));
+          log.debug(String.format("Adding to zip file: %s", filePath));
           // for ZipEntry we need to keep only relative file path, so we used substring on
           // absolute
           // path
@@ -295,7 +295,7 @@ public class FileUtilsLocal {
           zos.closeEntry();
           fis.close();
         } catch (ZipException zex) {
-          logger.error(String.format("Caught Zip exception %s", zex.getMessage()));
+          log.error(String.format("Caught Zip exception %s", zex.getMessage()));
         }
       }
       zos.close();
@@ -309,9 +309,9 @@ public class FileUtilsLocal {
     File thisDirectory = new File(directory);
 
     if (thisDirectory.exists()) {
-      logger.debug(String.format("Directory Exists: %s", thisDirectory));
+      log.debug(String.format("Directory Exists: %s", thisDirectory));
     } else {
-      logger.error(
+      log.error(
           String.format("Directory provided (%s) does not exist, exiting now...", directory));
       System.exit(94);
     }

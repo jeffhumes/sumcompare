@@ -7,48 +7,39 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * @author a0868055
+ * @author Jeff Humes
  *
  */
-public class SourceFileHashMapSingleton
-{
-        private static final Logger                     logger  = LoggerFactory.getLogger(SourceFileHashMapSingleton.class);
+@Slf4j
+public class SourceFileHashMapSingleton {
         private static SourceFileHashMapSingleton sourceFileHashMapSingleton;
-        private HashMap<String, String>       map    = null;
+        private HashMap<String, String> map = null;
 
-        private SourceFileHashMapSingleton()
-        {
+        private SourceFileHashMapSingleton() {
                 map = new HashMap<String, String>();
-                
+
         }
 
-        public static SourceFileHashMapSingleton getInstance() throws IOException, SQLException, PropertyVetoException
-        {
-                if (sourceFileHashMapSingleton == null)
-                {
+        public static SourceFileHashMapSingleton getInstance() throws IOException, SQLException, PropertyVetoException {
+                if (sourceFileHashMapSingleton == null) {
                         sourceFileHashMapSingleton = new SourceFileHashMapSingleton();
                         return sourceFileHashMapSingleton;
-                }
-                else
-                {
+                } else {
                         return sourceFileHashMapSingleton;
                 }
         }
 
         // retrieve array from anywhere
-        public HashMap<String, String> getMap()
-        {
+        public HashMap<String, String> getMap() {
                 return this.map;
         }
 
-        //Add element to array
-        public void addToMap(String key, String value)
-        {
-        	map.put(key, value);
+        // Add element to array
+        public void addToMap(String key, String value) {
+                map.put(key, value);
         }
 
 }

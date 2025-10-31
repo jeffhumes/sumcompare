@@ -8,15 +8,14 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Utility class for detecting file types, specifically identifying video and
  * image files.
  */
+@Slf4j
 public class FileTypeDetector {
-    private static final Logger logger = LoggerFactory.getLogger(FileTypeDetector.class);
 
     // Common video file extensions
     private static final Set<String> VIDEO_EXTENSIONS = new HashSet<>(Arrays.asList(
@@ -55,12 +54,12 @@ public class FileTypeDetector {
 
         // Check by extension first (fastest)
         if (VIDEO_EXTENSIONS.contains(extension)) {
-            logger.debug("File {} detected as VIDEO by extension", file.getName());
+            log.debug("File {} detected as VIDEO by extension", file.getName());
             return FileType.VIDEO;
         }
 
         if (IMAGE_EXTENSIONS.contains(extension)) {
-            logger.debug("File {} detected as IMAGE by extension", file.getName());
+            log.debug("File {} detected as IMAGE by extension", file.getName());
             return FileType.IMAGE;
         }
 
@@ -69,16 +68,16 @@ public class FileTypeDetector {
             String mimeType = detectMimeType(file);
             if (mimeType != null) {
                 if (mimeType.startsWith("video/")) {
-                    logger.debug("File {} detected as VIDEO by MIME type: {}", file.getName(), mimeType);
+                    log.debug("File {} detected as VIDEO by MIME type: {}", file.getName(), mimeType);
                     return FileType.VIDEO;
                 }
                 if (mimeType.startsWith("image/")) {
-                    logger.debug("File {} detected as IMAGE by MIME type: {}", file.getName(), mimeType);
+                    log.debug("File {} detected as IMAGE by MIME type: {}", file.getName(), mimeType);
                     return FileType.IMAGE;
                 }
             }
         } catch (IOException e) {
-            logger.debug("Could not detect MIME type for {}: {}", file.getName(), e.getMessage());
+            log.debug("Could not detect MIME type for {}: {}", file.getName(), e.getMessage());
         }
 
         return FileType.OTHER;

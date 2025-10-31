@@ -8,15 +8,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * @author a0868055
+ * @author Jeff Humes
  *
  */
+@Slf4j
 public class CopiedFileHashMapSingleton {
-        private static final Logger logger = LoggerFactory.getLogger(CopiedFileHashMapSingleton.class);
         private static CopiedFileHashMapSingleton copiedFileHashMapSingleton;
         private ConcurrentHashMap<String, String> map = null;
 

@@ -9,13 +9,13 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import lombok.extern.slf4j.Slf4j;
+
 import org.bofus.sumcompare.localutil.FileTypeDetector;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
 import org.bofus.sumcompare.model.PropertiesObject;
 import org.bofus.sumcompare.singletons.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,13 +27,15 @@ import java.time.Instant;
  * Controller for the SumCompare GUI.
  * Handles user interactions and coordinates the file comparison process.
  */
+@Slf4j
 public class SumCompareController {
-    private static final Logger logger = LoggerFactory.getLogger(SumCompareController.class);
 
     @FXML
     private TextField sourceTextField;
     @FXML
     private TextField targetTextField;
+    @FXML
+    private Button targetBrowseButton;
     @FXML
     private ComboBox<String> algorithmComboBox;
     @FXML
@@ -64,8 +66,11 @@ public class SumCompareController {
     private Label duplicatesCountLabel;
     @FXML
     private Label elapsedTimeLabel;
+    @FXML
+    private CheckBox sourceDuplicateCheckBox;
 
     private Task<Void> currentTask;
+    private Task<Void> timerTask;
     private Instant startTime;
 
     @FXML
@@ -82,7 +87,18 @@ public class SumCompareController {
         // Clear statistics
         resetStatistics();
 
-        logger.info("SumCompareController initialized");
+        sourceDuplicateCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+            targetTextField.setDisable(newValue);
+            targetBrowseButton.setDisable(newValue);
+
+            if (newValue) {
+                targetTextField.clear();
+                appendLog("Source duplicate check mode: Target directory disabled");
+            }
+        });
+
+        log.info("SumCompareController initialized");
+
     }
 
     @FXML
@@ -173,22 +189,22 @@ public class SumCompareController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/logviewer.fxml"));
             Parent root = loader.load();
-            
+
             Stage logStage = new Stage();
             logStage.setTitle("SumCompare - Application Log");
-            
+
             Scene scene = new Scene(root, 900, 600);
             scene.getStylesheets().add(getClass().getResource("/css/styles.css").toExternalForm());
             logStage.setScene(scene);
-            
+
             // Handle window close to stop the tail thread
             LogViewerController controller = loader.getController();
             logStage.setOnCloseRequest(event -> controller.shutdown());
-            
+
             logStage.show();
-            logger.info("Log viewer window opened");
+            log.info("Log viewer window opened");
         } catch (IOException e) {
-            logger.error("Failed to open log viewer", e);
+            log.error("Failed to open log viewer", e);
             showError("Failed to open log viewer: " + e.getMessage());
         }
     }
@@ -298,7 +314,7 @@ public class SumCompareController {
                     });
 
                 } catch (Exception e) {
-                    logger.error("Error during comparison", e);
+                    log.error("Error during comparison", e);
                     updateMessage("ERROR: " + e.getMessage());
                     throw e;
                 }
@@ -308,11 +324,13 @@ public class SumCompareController {
 
             @Override
             protected void succeeded() {
+                stopElapsedTimeUpdater();
                 enableControls(true);
             }
 
             @Override
             protected void failed() {
+                stopElapsedTimeUpdater();
                 enableControls(true);
                 Platform.runLater(() -> {
                     progressBar.setProgress(0);
@@ -323,6 +341,7 @@ public class SumCompareController {
 
             @Override
             protected void cancelled() {
+                stopElapsedTimeUpdater();
                 enableControls(true);
                 Platform.runLater(() -> {
                     progressBar.setProgress(0);
@@ -414,7 +433,7 @@ public class SumCompareController {
     }
 
     private void startElapsedTimeUpdater() {
-        Task<Void> timeTask = new Task<Void>() {
+        timerTask = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
                 while (!isCancelled()) {
@@ -430,9 +449,15 @@ public class SumCompareController {
             }
         };
 
-        Thread thread = new Thread(timeTask);
+        Thread thread = new Thread(timerTask);
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void stopElapsedTimeUpdater() {
+        if (timerTask != null && timerTask.isRunning()) {
+            timerTask.cancel();
+        }
     }
 
     private void enableControls(boolean enable) {
@@ -485,7 +510,7 @@ public class SumCompareController {
             MatchingFileHashMapSingleton.getInstance().getMap().clear();
             ExistingTargetFileObjectArraySingleton.getInstance().getArray().clear();
         } catch (Exception e) {
-            logger.error("Error clearing singletons", e);
+            log.error("Error clearing singletons", e);
         }
     }
 

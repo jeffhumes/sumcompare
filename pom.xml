@@ -95,6 +95,11 @@
 			<artifactId>javafx-fxml</artifactId>
 			<version>21.0.1</version>
 		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.42</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -112,6 +117,13 @@
 					<fork>true</fork>
 					<!-- Use the JVM's javac executable explicitly so Maven can find it when PATH doesn't include javac -->
 					<executable>${java.home}/bin/javac</executable>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.38</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 

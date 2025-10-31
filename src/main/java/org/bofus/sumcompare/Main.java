@@ -20,11 +20,11 @@ import org.bofus.sumcompare.singletons.MatchingFileHashMapSingleton;
 import org.bofus.sumcompare.singletons.SourceFileArraySingleton;
 import org.bofus.sumcompare.singletons.TargetFileArraySingleton;
 import org.bofus.sumcompare.singletons.TargetFileHashMapSingleton;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class Main {
-  private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws Exception {
     PropertiesObject propertiesObject = new PropertiesObject();
@@ -86,7 +86,7 @@ public class Main {
       if (cmdLine.hasOption("s")) {
         // sourceLocation = cmdLine.getOptionValue("s");
         propertiesObject.setSourceLocation(cmdLine.getOptionValue("s"));
-        logger.debug(
+        log.debug(
             String.format(
                 "Setting Source Location from Command Line Argument: %s",
                 propertiesObject.getSourceLocation()));
@@ -97,7 +97,7 @@ public class Main {
 
       if (cmdLine.hasOption("t")) {
         propertiesObject.setTargetLocation(cmdLine.getOptionValue("t"));
-        logger.debug(
+        log.debug(
             String.format(
                 "Setting Target Location from Command Line Argument: %s",
                 cmdLine.getOptionValue("t")));
@@ -128,11 +128,11 @@ public class Main {
       }
 
       if (cmdLine.hasOption("y")) {
-        logger.info("User has accepted the terms via the command line option '-y'");
+        log.info("User has accepted the terms via the command line option '-y'");
       } else {
         boolean userAccepts = UserUtilities.getUserAcceptance();
         if (userAccepts = true) {
-          logger.info("User has accepted the agreement, beginning processing...");
+          log.info("User has accepted the agreement, beginning processing...");
         }
       }
 
@@ -147,43 +147,43 @@ public class Main {
       }
 
     } catch (Exception e) {
-      logger.debug(e.toString());
+      log.debug(e.toString());
       throw e;
     }
 
     if (propertiesObject.isBackupFirst() == true) {
       // String backupFile = propertiesObject.getSourceLocation();
-      logger.debug("Backup first selected");
+      log.debug("Backup first selected");
       FileUtilsLocal.populateBackupFilesList(propertiesObject);
       FileUtilsLocal.zipDirectory(propertiesObject);
     } else {
-      logger.warn(
+      log.warn(
           "Backup first not specified on the command line, we will not backup the source files first!!!");
     }
 
     // get the target file directory list
-    logger.info("Getting the file list for the target location...");
+    log.info("Getting the file list for the target location...");
     FileUtilsLocal.getTargetDirectoryContentsArray(propertiesObject.getTargetLocation());
-    logger.debug(
+    log.debug(
         String.format(
             "Target File Singleton Size: %s",
             TargetFileArraySingleton.getInstance().getArray().size()));
 
     // get the checksums for the target files and put them in a map
-    logger.info(
+    log.info(
         "Getting the checksums for the target location files, depending on the number and size of files this may take a while...");
     FileUtilsLocal.createTargetFileChecksumMap(
         TargetFileArraySingleton.getInstance(), propertiesObject.getDigestType());
 
     // get the source file directory list
-    logger.info("Getting the file list  for the source location...");
+    log.info("Getting the file list  for the source location...");
     FileUtilsLocal.getSourceDirectoryContentsArray(propertiesObject.getSourceLocation());
-    logger.debug(
+    log.debug(
         String.format(
             "Source File Singleton Size: %s",
             SourceFileArraySingleton.getInstance().getArray().size()));
 
-    logger.debug(
+    log.debug(
         "Iterating through the source array, and checking if there is already a matching checksum in the target array");
 
     // Use parallel stream for concurrent file processing (Java 21 optimized)
@@ -213,7 +213,7 @@ public class Main {
                 MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
               }
             } else {
-              logger.info(
+              log.info(
                   String.format(
                       "%s [%s] seems to be a copy of file:\r\n%s",
                       thisSourceFileName, fileTypeDesc, existingfile));
@@ -241,47 +241,47 @@ public class Main {
 
             CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
             if (propertiesObject.isDryRun() == true) {
-              logger.info(
+              log.info(
                   String.format("Would Copy File [%s]: %s to %s", fileTypeDesc, thisSourceFileName, targetFullPath));
             } else {
-              logger.info(
+              log.info(
                   String.format("Copying [%s]: %s", fileTypeDesc, thisSourceFile.getName()));
               FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
             }
           }
         }
       } catch (Exception e) {
-        logger.error("Error processing source file: " + thisSourceFileName, e);
+        log.error("Error processing source file: " + thisSourceFileName, e);
       }
     });
 
     if (CopiedFileHashMapSingleton.getInstance().getMap().size() != 0
         || MatchingFileHashMapSingleton.getInstance().getMap().size() != 0) {
-      logger.debug(
+      log.debug(
           String.format(
               "%s files copied ", CopiedFileHashMapSingleton.getInstance().getMap().size()));
-      logger.debug(
+      log.debug(
           String.format(
               "%s files not copied as there were duplicates in the target location",
               MatchingFileHashMapSingleton.getInstance().getMap().size()));
       if (propertiesObject.isCreateOutputFile() == true) {
-        logger.debug("Creating output file");
+        log.debug("Creating output file");
         ReportUtils.createOutputExcel();
       }
     } else {
       if (propertiesObject.isCreateOutputFile() == true) {
-        logger.debug(
+        log.debug(
             "There were no files copied, and no duplicate files in the target with different names, no use creating a report");
       }
     }
 
-    logger.info("================================================");
-    logger.info("		COMPLETE		");
-    logger.info("================================================");
+    log.info("================================================");
+    log.info("		COMPLETE		");
+    log.info("================================================");
 
     // // get the source file directory list
     // FileUtils.getSourceDirectoryContentsArray(sourceLocation);
-    // logger.debug(String.format("Source File Singleton Size: %s",
+    // log.debug(String.format("Source File Singleton Size: %s",
     // SourceFileArraySingleton.getInstance().getArray().size()));
     //
     // // get the checksums for the source files and put them in a map

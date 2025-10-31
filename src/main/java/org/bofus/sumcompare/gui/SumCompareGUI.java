@@ -5,15 +5,14 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * JavaFX GUI application for SumCompare file deduplication tool.
  * Provides a user-friendly interface as an alternative to the CLI.
  */
+@Slf4j
 public class SumCompareGUI extends Application {
-    private static final Logger logger = LoggerFactory.getLogger(SumCompareGUI.class);
 
     @Override
     public void start(Stage primaryStage) {
@@ -30,9 +29,9 @@ public class SumCompareGUI extends Application {
             primaryStage.setMinHeight(500);
             primaryStage.show();
 
-            logger.info("SumCompare GUI started successfully");
+            log.info("SumCompare GUI started successfully");
         } catch (Exception e) {
-            logger.error("Failed to start GUI", e);
+            log.error("Failed to start GUI", e);
             e.printStackTrace();
         }
     }
