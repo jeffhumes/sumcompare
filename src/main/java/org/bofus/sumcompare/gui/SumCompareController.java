@@ -419,7 +419,7 @@ public class SumCompareController {
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         List<String> sourceFiles = SourceFileArraySingleton.getInstance().getArray();
         CountDownLatch latch = new CountDownLatch(sourceFiles.size());
-        
+
         for (String sourceFile : sourceFiles) {
             executor.submit(() -> {
                 try {
@@ -459,7 +459,8 @@ public class SumCompareController {
                             Platform.runLater(() -> appendLog(logMsg));
                         } else {
                             File targetFile = new File(targetPath);
-                            org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile, props.isPreserveFileDate());
+                            org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
+                                    props.isPreserveFileDate());
                             String fileName = thisSourceFile.getName();
                             String logMsg = String.format("Copied [%s]: %s", fileTypeDesc, fileName);
                             Platform.runLater(() -> appendLog(logMsg));
@@ -476,7 +477,7 @@ public class SumCompareController {
                 }
             });
         }
-        
+
         executor.shutdown();
         latch.await();
     }
