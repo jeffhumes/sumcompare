@@ -14,6 +14,7 @@ import org.bofus.sumcompare.localutil.FileTypeDetector;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
 import org.bofus.sumcompare.localutil.UserUtilities;
+import org.bofus.sumcompare.model.FileMetadata;
 import org.bofus.sumcompare.model.PropertiesObject;
 import org.bofus.sumcompare.singletons.CopiedFileHashMapSingleton;
 import org.bofus.sumcompare.singletons.MatchingFileHashMapSingleton;
@@ -116,13 +117,10 @@ public class Main {
 
       if (cmdLine.hasOption("r")) {
         propertiesObject.setPostCopyRemove(true);
-        // postCopyRemove = true;
       }
 
       if (cmdLine.hasOption("z")) {
-        // String typeFromArgs = cmdLine.getOptionValue("z");
         propertiesObject.setDigestType(FileUtilsLocal.SetDigestType(cmdLine.getOptionValue("z")));
-        // digestType = FileUtilsLocal.SetDigestType(typeFromArgs);
       } else {
         showHelp(cliOptions);
       }
@@ -210,6 +208,9 @@ public class Main {
       try {
         File thisSourceFile = new File(thisSourceFileName);
 
+        // Capture file metadata
+        FileMetadata metadata = FileMetadata.fromFile(thisSourceFile);
+
         // Detect file type
         String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
 
@@ -233,8 +234,8 @@ public class Main {
             } else {
               log.info(
                   String.format(
-                      "%s [%s] seems to be a copy of file:\r\n%s",
-                      thisSourceFileName, fileTypeDesc, existingfile));
+                      "%s [%s] seems to be a copy of file:\r\n%s\r\nMetadata: %s",
+                      thisSourceFileName, fileTypeDesc, existingfile, metadata.getSummary()));
               MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
             }
 
@@ -260,10 +261,12 @@ public class Main {
             CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
             if (propertiesObject.isDryRun() == true) {
               log.info(
-                  String.format("Would Copy File [%s]: %s to %s", fileTypeDesc, thisSourceFileName, targetFullPath));
+                  String.format("Would Copy File [%s]: %s to %s (%s)",
+                      fileTypeDesc, thisSourceFileName, targetFullPath, metadata.getSummary()));
             } else {
               log.info(
-                  String.format("Copying [%s]: %s", fileTypeDesc, thisSourceFile.getName()));
+                  String.format("Copying [%s]: %s (%s)", fileTypeDesc, thisSourceFile.getName(),
+                      metadata.getSummary()));
               FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
             }
           }

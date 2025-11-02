@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.bofus.sumcompare.localutil.FileTypeDetector;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
+import org.bofus.sumcompare.model.FileMetadata;
 import org.bofus.sumcompare.model.PropertiesObject;
 import org.bofus.sumcompare.singletons.*;
 
@@ -429,6 +430,9 @@ public class SumCompareController {
 
                     File thisSourceFile = new File(sourceFile);
 
+                    // Capture file metadata
+                    FileMetadata metadata = FileMetadata.fromFile(thisSourceFile);
+
                     // Detect file type
                     String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
 
@@ -443,8 +447,8 @@ public class SumCompareController {
                         if (sourceFileName.equals(targetFileName)) {
                             MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                         } else {
-                            String logMsg = String.format("Duplicate [%s]: %s -> %s", fileTypeDesc, sourceFileName,
-                                    existingFile);
+                            String logMsg = String.format("Duplicate [%s]: %s -> %s (%s)",
+                                    fileTypeDesc, sourceFileName, existingFile, metadata.getSummary());
                             Platform.runLater(() -> appendLog(logMsg));
                             MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                         }
@@ -455,14 +459,16 @@ public class SumCompareController {
 
                         if (props.isDryRun()) {
                             String fileName = thisSourceFile.getName();
-                            String logMsg = String.format("Would copy [%s]: %s", fileTypeDesc, fileName);
+                            String logMsg = String.format("Would copy [%s]: %s (%s)",
+                                    fileTypeDesc, fileName, metadata.getSummary());
                             Platform.runLater(() -> appendLog(logMsg));
                         } else {
                             File targetFile = new File(targetPath);
                             org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
                                     props.isPreserveFileDate());
                             String fileName = thisSourceFile.getName();
-                            String logMsg = String.format("Copied [%s]: %s", fileTypeDesc, fileName);
+                            String logMsg = String.format("Copied [%s]: %s (%s)",
+                                    fileTypeDesc, fileName, metadata.getSummary());
                             Platform.runLater(() -> appendLog(logMsg));
                         }
 

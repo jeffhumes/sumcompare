@@ -6,9 +6,11 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Launch Java Program",
+            "name": "Debug JavaFX App",
             "request": "launch",
-            "mainClass": ""
+            "mainClass": "org.bofus.sumcompare.gui.SumCompareGUI",
+            "vmArgs": "--module-path /usr/share/openjfx/lib --add-modules javafx.controls,javafx.fxml",
+            "projectName": "sumcompare" 
         },
         {
             "type": "java",

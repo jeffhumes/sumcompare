@@ -7,6 +7,7 @@ Intelligent file copying tool with checksum-based deduplication for Java.
 - **Checksum-based deduplication**: Compares files using cryptographic hashes to avoid copying duplicates
 - **Multiple hash algorithms**: Supports MD5, SHA1, XXHash32, and XXHash64
 - **File type detection**: Automatically identifies video and image files for enhanced logging
+- **File metadata retrieval**: Captures and displays file size, timestamps, owner, and permissions
 - **Dry-run mode**: Preview operations without making changes
 - **Excel reports**: Generate detailed reports of copied files and duplicates
 - **Structure preservation**: Option to maintain source directory structure
@@ -138,6 +139,54 @@ File type information is included in log messages:
 Would Copy File [Video]: /path/to/video.mp4 to /target/video.mp4
 Would Copy File [Image]: /path/to/photo.jpg to /target/photo.jpg
 Duplicate [Video]: clip.mov -> existing_clip.mov
+```
+
+## File Metadata
+
+The tool automatically captures and displays metadata for all files being checked:
+
+### Captured Metadata
+
+- **File size**: Displayed in human-readable format (B, KB, MB, GB)
+- **Creation time**: When the file was created (if available)
+- **Last modified time**: When the file was last changed
+- **Last access time**: When the file was last accessed
+- **Owner**: File owner username
+- **Permissions**: Read-only status and hidden flag
+- **File attributes**: Regular file, directory, or symbolic link
+
+### Metadata in Logs
+
+Metadata is displayed inline with file operations:
+
+```
+Copying [Video]: vacation.mp4 (Size: 156.32 MB | Modified: 2024-08-15 14:23:10)
+Would copy [Image]: photo.jpg (Size: 2.45 MB | Modified: 2024-09-20 09:15:33)
+Duplicate [Video]: clip.mov -> existing_clip.mov (Size: 89.12 MB | Modified: 2024-07-10 18:42:05)
+```
+
+### Metadata API
+
+The `FileMetadata` class provides programmatic access to file attributes:
+
+```java
+FileMetadata metadata = FileMetadata.fromFile(file);
+String size = metadata.getFormattedSize();        // "156.32 MB"
+String modified = metadata.getLastModifiedTime(); // "2024-08-15 14:23:10"
+String summary = metadata.getSummary();           // Complete summary string
+```
+
+Additional utilities are available in `FileMetadataUtils`:
+
+```java
+// Log detailed metadata
+FileMetadataUtils.logDetailedMetadata(file);
+
+// Compare metadata between files
+boolean same = FileMetadataUtils.haveSameMetadata(file1, file2);
+
+// Check recent modifications
+boolean recent = FileMetadataUtils.wasModifiedWithinHours(file, 24);
 ```
 
 ## License
