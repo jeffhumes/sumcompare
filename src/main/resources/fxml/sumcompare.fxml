@@ -59,8 +59,8 @@
         <Label text="Options:" styleClass="label-header"/>
         <CheckBox fx:id="dryRunCheckBox" text="Dry Run (preview without copying)" selected="true"/>
         <CheckBox fx:id="keepStructureCheckBox" text="Keep source directory structure"/>
-        <CheckBox fx:id="backupCheckBox" text="Backup source first"/>
-        <CheckBox fx:id="preserveDateCheckBox" text="Preserve file dates"/>
+        <CheckBox fx:id="backupCheckBox" text="Backup source first (warning: increases processing time)" selected="true"/>
+        <CheckBox fx:id="preserveDateCheckBox" text="Preserve file dates" selected="true"/>
         <CheckBox fx:id="createReportCheckBox" text="Create Excel report"/>
         <CheckBox fx:id="moveFilesCheckBox" text="Move files instead of copying (deletes source after copy)"/>
         <HBox spacing="10" alignment="CENTER_LEFT">

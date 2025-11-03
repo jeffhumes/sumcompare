@@ -135,7 +135,7 @@ public class SumCompareController {
                     "YEAR_MONTH_DAY_SLASH (2025/11/03)",
                     "YEAR_ONLY (2025)",
                     "YEAR_QUARTER (2025-Q4)");
-            datePatternComboBox.getSelectionModel().select("YEAR_MONTH (2025-11)");
+            datePatternComboBox.getSelectionModel().select("YEAR_MONTH_DAY (2025-11-03)");
             datePatternComboBox.setDisable(true); // Disabled by default
         }
 
