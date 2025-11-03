@@ -62,6 +62,16 @@
         <CheckBox fx:id="backupCheckBox" text="Backup source first"/>
         <CheckBox fx:id="preserveDateCheckBox" text="Preserve file dates"/>
         <CheckBox fx:id="createReportCheckBox" text="Create Excel report"/>
+        
+        <!-- Date-Based Organization -->
+        <Separator/>
+        <CheckBox fx:id="dateFoldersCheckBox" text="Organize files into date-based folders"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Date Source:" prefWidth="100"/>
+            <ComboBox fx:id="dateSourceComboBox" prefWidth="150"/>
+            <Label text="Folder Pattern:" prefWidth="100"/>
+            <ComboBox fx:id="datePatternComboBox" prefWidth="200"/>
+        </HBox>
     </VBox>
 
     <Separator/>

@@ -32,6 +32,9 @@ java -jar target/sumcompare.jar [OPTIONS]
 - `-k` or `--keep-source-structure`: Preserve source directory structure in target
 - `-o` or `--create-output-file`: Generate Excel report (`Copy_Output.xlsx`)
 - `-p` or `--preserve-file-date`: Maintain file timestamps when copying
+- `-df` or `--date-folders`: Organize files into date-based folders
+- `-ds` or `--date-source`: Date source (CREATED, MODIFIED, ACCESSED) - default: MODIFIED
+- `-dp` or `--date-pattern`: Folder pattern (see Date-Based Organization below)
 - `-y` or `--i-agree`: Skip interactive acceptance prompt
 - `-h` or `--help`: Show help screen
 
@@ -139,6 +142,73 @@ File type information is included in log messages:
 Would Copy File [Video]: /path/to/video.mp4 to /target/video.mp4
 Would Copy File [Image]: /path/to/photo.jpg to /target/photo.jpg
 Duplicate [Video]: clip.mov -> existing_clip.mov
+```
+
+## Date-Based Organization
+
+The tool can automatically organize copied files into folders based on file dates:
+
+### Date Sources
+
+- **MODIFIED** (default): Use file modification date
+- **CREATED**: Use file creation date
+- **ACCESSED**: Use file last access date
+
+### Folder Patterns
+
+- **YEAR_MONTH** (default): `2024-10/` format
+- **YEAR_MONTH_SLASH**: `2024/10/` format
+- **YEAR_MONTH_DAY**: `2024-10-31/` format
+- **YEAR_MONTH_DAY_SLASH**: `2024/10/31/` format
+- **YEAR_ONLY**: `2024/` format
+- **YEAR_QUARTER**: `2024-Q4/` format
+
+### Examples
+
+Organize files by year and month (modification date):
+
+```bash
+java -jar target/sumcompare.jar -df -y -z XXHASH64 \
+  -s /path/to/source -t /path/to/target
+```
+
+Organize by full date with creation date:
+
+```bash
+java -jar target/sumcompare.jar -df -ds CREATED -dp YEAR_MONTH_DAY -y -z XXHASH64 \
+  -s /path/to/source -t /path/to/target
+```
+
+Result structure:
+
+```
+target/
+├── 2024-01/
+│   ├── file1.jpg
+│   └── file2.mp4
+├── 2024-02/
+│   └── file3.jpg
+└── 2024-03/
+    └── file4.mp4
+```
+
+Combine with `-k` to preserve source structure within date folders:
+
+```bash
+java -jar target/sumcompare.jar -df -k -y -z XXHASH64 \
+  -s /path/to/source -t /path/to/target
+```
+
+Result structure:
+
+```
+target/
+├── 2024-01/
+│   └── vacation/
+│       └── beach.jpg
+└── 2024-02/
+    └── work/
+        └── presentation.pdf
 ```
 
 ## File Metadata

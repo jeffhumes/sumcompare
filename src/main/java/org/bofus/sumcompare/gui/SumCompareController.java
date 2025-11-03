@@ -75,6 +75,12 @@ public class SumCompareController {
     private Label elapsedTimeLabel;
     @FXML
     private CheckBox sourceDuplicateCheckBox;
+    @FXML
+    private CheckBox dateFoldersCheckBox;
+    @FXML
+    private ComboBox<String> dateSourceComboBox;
+    @FXML
+    private ComboBox<String> datePatternComboBox;
 
     private Task<Void> currentTask;
     private Task<Void> timerTask;
@@ -93,6 +99,41 @@ public class SumCompareController {
         SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(
                 1, availableProcessors * 2, availableProcessors);
         threadCountSpinner.setValueFactory(valueFactory);
+
+        // Populate date source choices with descriptions
+        if (dateSourceComboBox != null) {
+            dateSourceComboBox.getItems().addAll(
+                    "MODIFIED (last changed)",
+                    "CREATED (when created)",
+                    "ACCESSED (last opened)");
+            dateSourceComboBox.getSelectionModel().select("MODIFIED (last changed)");
+            dateSourceComboBox.setDisable(true); // Disabled by default
+        }
+
+        // Populate date pattern choices with examples
+        if (datePatternComboBox != null) {
+            datePatternComboBox.getItems().addAll(
+                    "YEAR_MONTH (2025-11)",
+                    "YEAR_MONTH_SLASH (2025/11)",
+                    "YEAR_MONTH_DAY (2025-11-03)",
+                    "YEAR_MONTH_DAY_SLASH (2025/11/03)",
+                    "YEAR_ONLY (2025)",
+                    "YEAR_QUARTER (2025-Q4)");
+            datePatternComboBox.getSelectionModel().select("YEAR_MONTH (2025-11)");
+            datePatternComboBox.setDisable(true); // Disabled by default
+        }
+
+        // Add listener to enable/disable date options when checkbox is toggled
+        if (dateFoldersCheckBox != null) {
+            dateFoldersCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+                if (dateSourceComboBox != null) {
+                    dateSourceComboBox.setDisable(!newValue);
+                }
+                if (datePatternComboBox != null) {
+                    datePatternComboBox.setDisable(!newValue);
+                }
+            });
+        }
 
         // Initialize progress bar to 0
         progressBar.setProgress(0.0);
@@ -250,7 +291,10 @@ public class SumCompareController {
                         "   - Keep Structure: Preserve directories\n" +
                         "   - Backup Source: Create zip backup\n" +
                         "   - Preserve Dates: Keep file timestamps\n" +
-                        "   - Create Report: Generate Excel output\n\n" +
+                        "   - Create Report: Generate Excel output\n" +
+                        "   - Date Folders: Organize by file dates\n" +
+                        "     * Date Source: MODIFIED/CREATED/ACCESSED\n" +
+                        "     * Pattern: YEAR_MONTH, YEAR_MONTH_DAY, etc.\n\n" +
                         "5. Click START to begin comparison\n\n" +
                         "The tool will skip files that already exist in target.");
         alert.showAndWait();
@@ -275,6 +319,47 @@ public class SumCompareController {
                     props.setBackupFirst(backupCheckBox.isSelected());
                     props.setPreserveFileDate(preserveDateCheckBox.isSelected());
                     props.setCreateOutputFile(createReportCheckBox.isSelected());
+
+                    // Set date-based folder organization
+                    if (dateFoldersCheckBox != null && dateFoldersCheckBox.isSelected()) {
+                        props.setOrganizeDateFolders(true);
+
+                        // Set date source
+                        if (dateSourceComboBox != null) {
+                            String dateSourceStr = dateSourceComboBox.getValue();
+                            // Extract enum name before the space (e.g., "MODIFIED (last changed)" ->
+                            // "MODIFIED")
+                            String enumName = dateSourceStr.contains(" ")
+                                    ? dateSourceStr.substring(0, dateSourceStr.indexOf(" "))
+                                    : dateSourceStr;
+                            props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource
+                                    .valueOf(enumName));
+                        } else {
+                            props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
+                        }
+
+                        // Set date pattern
+                        if (datePatternComboBox != null) {
+                            String datePatternStr = datePatternComboBox.getValue();
+                            // Extract enum name before the space (e.g., "YEAR_MONTH (2025-11)" ->
+                            // "YEAR_MONTH")
+                            String enumName = datePatternStr.contains(" ")
+                                    ? datePatternStr.substring(0, datePatternStr.indexOf(" "))
+                                    : datePatternStr;
+                            props.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern
+                                    .valueOf(enumName));
+                        } else {
+                            props.setDatePattern(
+                                    org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
+                        }
+
+                        String orgDescription = org.bofus.sumcompare.localutil.DateFolderOrganizer
+                                .getOrganizationDescription(
+                                        props.getDateSource(), props.getDatePattern());
+                        updateMessage("Date-based organization: " + orgDescription);
+                    } else {
+                        props.setOrganizeDateFolders(false);
+                    }
 
                     // Set digest type
                     String algorithm = algorithmComboBox.getValue();
@@ -464,6 +549,12 @@ public class SumCompareController {
                             Platform.runLater(() -> appendLog(logMsg));
                         } else {
                             File targetFile = new File(targetPath);
+
+                            // Ensure date-based folder exists before copying
+                            if (props.isOrganizeDateFolders()) {
+                                org.bofus.sumcompare.localutil.DateFolderOrganizer.ensureDateFolderExists(targetFile);
+                            }
+
                             org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
                                     props.isPreserveFileDate());
                             String fileName = thisSourceFile.getName();
@@ -491,7 +582,24 @@ public class SumCompareController {
     private String calculateTargetPath(String sourceFile, PropertiesObject props) {
         String targetFileName = FileUtilsLocal.getFileName(sourceFile);
 
-        if (props.isKeepSourceStructure()) {
+        // Use date-based folder organization if enabled
+        if (props.isOrganizeDateFolders()) {
+            try {
+                File thisSourceFile = new File(sourceFile);
+                File baseTargetDir = new File(props.getTargetLocation());
+                File targetFile = org.bofus.sumcompare.localutil.DateFolderOrganizer.generateDateBasedTargetPath(
+                        thisSourceFile,
+                        baseTargetDir,
+                        props.getDateSource(),
+                        props.getDatePattern(),
+                        props.isKeepSourceStructure());
+                return targetFile.getAbsolutePath();
+            } catch (Exception e) {
+                log.error("Error generating date-based path for {}, falling back to standard path", sourceFile, e);
+                // Fallback to standard logic
+                return props.getTargetLocation() + File.separator + targetFileName;
+            }
+        } else if (props.isKeepSourceStructure()) {
             String sourceBasePath = sourceFile.replace(props.getSourceLocation(), "");
             String tempPath = org.apache.commons.io.FilenameUtils.getPath(sourceBasePath);
             return props.getTargetLocation() + File.separator + tempPath + File.separator + targetFileName;

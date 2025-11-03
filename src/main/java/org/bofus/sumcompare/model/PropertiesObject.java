@@ -1,107 +1,117 @@
 package org.bofus.sumcompare.model;
 
+import org.bofus.sumcompare.localutil.DateFolderOrganizer;
+
 import java.security.MessageDigest;
 
-public class PropertiesObject
-{
-	private String			sourceLocation;
-	private String			targetLocation;
-	private MessageDigest	digestType;
-	private boolean			postCopyRemove;
-	private boolean			preserveFileDate;
-	private boolean			createOutputFile;
-	private boolean			dryRun;
-	private boolean			backupFirst;
-	private boolean			keepSourceStructure;
+public class PropertiesObject {
+	private String sourceLocation;
+	private String targetLocation;
+	private MessageDigest digestType;
+	private boolean postCopyRemove;
+	private boolean preserveFileDate;
+	private boolean createOutputFile;
+	private boolean dryRun;
+	private boolean backupFirst;
+	private boolean keepSourceStructure;
+	private boolean organizeDateFolders;
+	private DateFolderOrganizer.DateSource dateSource;
+	private DateFolderOrganizer.DatePattern datePattern;
 
-	public String getSourceLocation()
-	{
+	public String getSourceLocation() {
 		return sourceLocation;
 	}
 
-	public void setSourceLocation(String sourceLocation)
-	{
+	public void setSourceLocation(String sourceLocation) {
 		this.sourceLocation = sourceLocation;
 	}
 
-	public String getTargetLocation()
-	{
+	public String getTargetLocation() {
 		return targetLocation;
 	}
 
-	public void setTargetLocation(String targetLocation)
-	{
+	public void setTargetLocation(String targetLocation) {
 		this.targetLocation = targetLocation;
 	}
 
-	public MessageDigest getDigestType()
-	{
+	public MessageDigest getDigestType() {
 		return digestType;
 	}
 
-	public void setDigestType(MessageDigest digestType)
-	{
+	public void setDigestType(MessageDigest digestType) {
 		this.digestType = digestType;
 	}
 
-	public boolean isPostCopyRemove()
-	{
+	public boolean isPostCopyRemove() {
 		return postCopyRemove;
 	}
 
-	public void setPostCopyRemove(boolean postCopyRemove)
-	{
+	public void setPostCopyRemove(boolean postCopyRemove) {
 		this.postCopyRemove = postCopyRemove;
 	}
 
-	public boolean isPreserveFileDate()
-	{
+	public boolean isPreserveFileDate() {
 		return preserveFileDate;
 	}
 
-	public void setPreserveFileDate(boolean preserveFileDate)
-	{
+	public void setPreserveFileDate(boolean preserveFileDate) {
 		this.preserveFileDate = preserveFileDate;
 	}
 
-	public boolean isCreateOutputFile()
-	{
+	public boolean isCreateOutputFile() {
 		return createOutputFile;
 	}
 
-	public void setCreateOutputFile(boolean createOutputFile)
-	{
+	public void setCreateOutputFile(boolean createOutputFile) {
 		this.createOutputFile = createOutputFile;
 	}
 
-	public boolean isDryRun()
-	{
+	public boolean isDryRun() {
 		return dryRun;
 	}
 
-	public void setDryRun(boolean dryRun)
-	{
+	public void setDryRun(boolean dryRun) {
 		this.dryRun = dryRun;
 	}
 
-	public boolean isBackupFirst()
-	{
+	public boolean isBackupFirst() {
 		return backupFirst;
 	}
 
-	public void setBackupFirst(boolean backupFirst)
-	{
+	public void setBackupFirst(boolean backupFirst) {
 		this.backupFirst = backupFirst;
 	}
 
-	public boolean isKeepSourceStructure()
-	{
+	public boolean isKeepSourceStructure() {
 		return keepSourceStructure;
 	}
 
-	public void setKeepSourceStructure(boolean keepSourceStructure)
-	{
+	public void setKeepSourceStructure(boolean keepSourceStructure) {
 		this.keepSourceStructure = keepSourceStructure;
+	}
+
+	public boolean isOrganizeDateFolders() {
+		return organizeDateFolders;
+	}
+
+	public void setOrganizeDateFolders(boolean organizeDateFolders) {
+		this.organizeDateFolders = organizeDateFolders;
+	}
+
+	public DateFolderOrganizer.DateSource getDateSource() {
+		return dateSource;
+	}
+
+	public void setDateSource(DateFolderOrganizer.DateSource dateSource) {
+		this.dateSource = dateSource;
+	}
+
+	public DateFolderOrganizer.DatePattern getDatePattern() {
+		return datePattern;
+	}
+
+	public void setDatePattern(DateFolderOrganizer.DatePattern datePattern) {
+		this.datePattern = datePattern;
 	}
 
 }

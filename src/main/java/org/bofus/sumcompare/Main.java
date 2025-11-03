@@ -10,6 +10,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.bofus.sumcompare.localutil.DateFolderOrganizer;
 import org.bofus.sumcompare.localutil.FileTypeDetector;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
@@ -63,6 +64,21 @@ public class Main {
         "chksumtype",
         true,
         "The type of checksum data to use for comparison (SHA1, MD5, XXHASH32, XXHASH64)	<REQUIRED>");
+    cliOptions.addOption(
+        "df",
+        "date-folders",
+        false,
+        "Organize files into date-based folders (default: false)");
+    cliOptions.addOption(
+        "ds",
+        "date-source",
+        true,
+        "Date source for folder organization: CREATED, MODIFIED, ACCESSED (default: MODIFIED)");
+    cliOptions.addOption(
+        "dp",
+        "date-pattern",
+        true,
+        "Date folder pattern: YEAR_MONTH, YEAR_MONTH_SLASH, YEAR_MONTH_DAY, YEAR_MONTH_DAY_SLASH, YEAR_ONLY, YEAR_QUARTER (default: YEAR_MONTH)");
     cliOptions.addOption("h", "help", false, "Shows this help screen");
 
     // -------------------------------------------------------------
@@ -140,6 +156,38 @@ public class Main {
         propertiesObject.setKeepSourceStructure(false);
       }
 
+      if (cmdLine.hasOption("df")) {
+        propertiesObject.setOrganizeDateFolders(true);
+      } else {
+        propertiesObject.setOrganizeDateFolders(false);
+      }
+
+      if (cmdLine.hasOption("ds")) {
+        String dateSourceStr = cmdLine.getOptionValue("ds").toUpperCase();
+        try {
+          propertiesObject
+              .setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.valueOf(dateSourceStr));
+        } catch (IllegalArgumentException e) {
+          log.error("Invalid date source: {}. Using MODIFIED as default.", dateSourceStr);
+          propertiesObject.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
+        }
+      } else {
+        propertiesObject.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
+      }
+
+      if (cmdLine.hasOption("dp")) {
+        String datePatternStr = cmdLine.getOptionValue("dp").toUpperCase();
+        try {
+          propertiesObject
+              .setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.valueOf(datePatternStr));
+        } catch (IllegalArgumentException e) {
+          log.error("Invalid date pattern: {}. Using YEAR_MONTH as default.", datePatternStr);
+          propertiesObject.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
+        }
+      } else {
+        propertiesObject.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
+      }
+
       if (cmdLine.hasOption("h")) {
         showHelp(cliOptions);
       }
@@ -147,6 +195,14 @@ public class Main {
     } catch (Exception e) {
       log.debug(e.toString());
       throw e;
+    }
+
+    // Log date-based organization settings if enabled
+    if (propertiesObject.isOrganizeDateFolders()) {
+      String orgDescription = DateFolderOrganizer.getOrganizationDescription(
+          propertiesObject.getDateSource(),
+          propertiesObject.getDatePattern());
+      log.info("Date-based folder organization enabled: {}", orgDescription);
     }
 
     // Step 1: Backup if requested
@@ -243,8 +299,27 @@ public class Main {
             String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
             String targetFullPath = null;
             String sourceBasePath = null;
+            File targetFile = null;
 
-            if (propertiesObject.isKeepSourceStructure() == true) {
+            // Use date-based folder organization if enabled
+            if (propertiesObject.isOrganizeDateFolders()) {
+              try {
+                File baseTargetDir = new File(propertiesObject.getTargetLocation());
+                targetFile = DateFolderOrganizer.generateDateBasedTargetPath(
+                    thisSourceFile,
+                    baseTargetDir,
+                    propertiesObject.getDateSource(),
+                    propertiesObject.getDatePattern(),
+                    propertiesObject.isKeepSourceStructure());
+                targetFullPath = targetFile.getAbsolutePath();
+              } catch (Exception e) {
+                log.error("Error generating date-based path for {}, falling back to standard path", thisSourceFileName,
+                    e);
+                // Fallback to standard logic
+                targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
+                targetFile = new File(targetFullPath);
+              }
+            } else if (propertiesObject.isKeepSourceStructure() == true) {
               sourceBasePath = thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
               String tempPath = FilenameUtils.getPath(sourceBasePath);
               targetFullPath = propertiesObject.getTargetLocation()
@@ -252,11 +327,11 @@ public class Main {
                   + tempPath
                   + File.separatorChar
                   + targetFileName;
+              targetFile = new File(targetFullPath);
             } else {
               targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
+              targetFile = new File(targetFullPath);
             }
-
-            File targetFile = new File(targetFullPath);
 
             CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
             if (propertiesObject.isDryRun() == true) {
@@ -264,6 +339,10 @@ public class Main {
                   String.format("Would Copy File [%s]: %s to %s (%s)",
                       fileTypeDesc, thisSourceFileName, targetFullPath, metadata.getSummary()));
             } else {
+              // Ensure date-based folder exists before copying
+              if (propertiesObject.isOrganizeDateFolders()) {
+                DateFolderOrganizer.ensureDateFolderExists(targetFile);
+              }
               log.info(
                   String.format("Copying [%s]: %s (%s)", fileTypeDesc, thisSourceFile.getName(),
                       metadata.getSummary()));
