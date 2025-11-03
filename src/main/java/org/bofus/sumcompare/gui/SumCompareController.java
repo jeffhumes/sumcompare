@@ -504,11 +504,13 @@ public class SumCompareController {
                                 "SOURCE DUPLICATE CHECK MODE: Only processing duplicates within source, no files will be copied");
                     }
 
-                    // Step 1: Backup if requested
-                    if (props.isBackupFirst()) {
+                    // Step 1: Backup if requested (skip in dry run mode)
+                    if (props.isBackupFirst() && !props.isDryRun()) {
                         updateMessage("Creating backup of source directory...");
                         FileUtilsLocal.zipDirectory(props);
                         updateMessage("Backup completed");
+                    } else if (props.isBackupFirst() && props.isDryRun()) {
+                        updateMessage("Skipping backup (dry run mode)");
                     }
 
                     // Step 2 & 4: Scan target and source directories in parallel
