@@ -82,7 +82,7 @@
             <TextField fx:id="dateTargetField" promptText="(defaults to source directory)" HBox.hgrow="ALWAYS"/>
             <Button fx:id="dateTargetBrowseButton" text="Browse..." onAction="#onBrowseDateTarget" minWidth="80"/>
         </HBox>
-        <CheckBox fx:id="useMetadataCheckBox" text="Use image/video metadata dates when available (EXIF, etc.)"/>
+        <CheckBox fx:id="useMetadataCheckBox" text="Use image/video metadata dates when available (falls back to Date Source if no EXIF)"/>
         
         <!-- Duplicate Handling -->
         <Separator/>
