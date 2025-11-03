@@ -97,10 +97,10 @@ public class DateFolderOrganizer {
                 java.time.Instant metadataDate = MediaMetadataExtractor.extractCreationDate(file);
                 if (metadataDate != null) {
                     dateTime = LocalDateTime.ofInstant(metadataDate, java.time.ZoneId.systemDefault());
-                    log.debug("Using metadata date for {}: {}", file.getName(), dateTime);
+                    log.trace("Using metadata date for {}: {}", file.getName(), dateTime);
                 }
             } catch (Exception e) {
-                log.debug("Could not extract metadata date for {}, falling back to file system: {}",
+                log.error("Could not extract metadata date for {}, falling back to file system: {}",
                         file.getName(), e.getMessage());
             }
         }
@@ -202,7 +202,7 @@ public class DateFolderOrganizer {
         if (parentDir != null && !parentDir.exists()) {
             boolean created = parentDir.mkdirs();
             if (created) {
-                log.debug("Created date-based folder structure: {}", parentDir.getAbsolutePath());
+                log.trace("Created date-based folder structure: {}", parentDir.getAbsolutePath());
             }
             return created;
         }

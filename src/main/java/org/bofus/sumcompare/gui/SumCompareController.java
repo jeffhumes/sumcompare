@@ -1011,7 +1011,7 @@ public class SumCompareController {
         children = directory.listFiles();
         if (children != null && children.length == 0) {
             if (directory.delete()) {
-                log.debug("Deleted empty folder: {}", directory.getAbsolutePath());
+                log.trace("Deleted empty folder: {}", directory.getAbsolutePath());
                 deletedCount++;
             }
         }

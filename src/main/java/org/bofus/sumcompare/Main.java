@@ -193,7 +193,7 @@ public class Main {
       }
 
     } catch (Exception e) {
-      log.debug(e.toString());
+      log.error(e.toString());
       throw e;
     }
 
@@ -372,16 +372,6 @@ public class Main {
     log.info(String.format("Files copied: %d", copied));
     log.info(String.format("Duplicates found: %d", duplicates));
     log.info("================================================");
-
-    // // get the source file directory list
-    // FileUtils.getSourceDirectoryContentsArray(sourceLocation);
-    // log.debug(String.format("Source File Singleton Size: %s",
-    // SourceFileArraySingleton.getInstance().getArray().size()));
-    //
-    // // get the checksums for the source files and put them in a map
-    // FileUtils.createSourceFileChecksumMap(SourceFileArraySingleton.getInstance(),
-    // digestType);
-
   }
 
   /*************************************************

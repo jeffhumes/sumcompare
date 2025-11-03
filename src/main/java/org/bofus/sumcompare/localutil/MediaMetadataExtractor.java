@@ -83,9 +83,9 @@ public class MediaMetadataExtractor {
             }
 
         } catch (ImageProcessingException e) {
-            log.debug("Could not process metadata for {}: {}", file.getName(), e.getMessage());
+            log.error("Could not process metadata for {}: {}", file.getName(), e.getMessage());
         } catch (IOException e) {
-            log.debug("IO error reading metadata for {}: {}", file.getName(), e.getMessage());
+            log.error("IO error reading metadata for {}: {}", file.getName(), e.getMessage());
         }
 
         // Fallback: try file system creation time
@@ -162,7 +162,7 @@ public class MediaMetadataExtractor {
             BasicFileAttributes attrs = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
             return attrs.creationTime().toInstant();
         } catch (IOException e) {
-            log.debug("Could not read file system attributes for {}: {}", file.getName(), e.getMessage());
+            log.error("Could not read file system attributes for {}: {}", file.getName(), e.getMessage());
             return null;
         }
     }

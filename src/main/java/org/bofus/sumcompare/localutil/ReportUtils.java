@@ -60,11 +60,6 @@ public class ReportUtils {
 			currentRow.createCell(0).setCellValue(key);
 			currentRow.createCell(1).setCellValue(CopiedFileHashMapSingleton.getInstance().getMap().get(key));
 
-			// log.debug("===================================================================================");
-			// log.debug("Source File: " + key);
-			// log.debug("Target File: " +
-			// CopiedFileHashMapSingleton.getInstance().getMap().get(key));
-			// log.debug("===================================================================================");
 			copiedRowCount++;
 		}
 

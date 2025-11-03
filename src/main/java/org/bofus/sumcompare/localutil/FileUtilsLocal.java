@@ -58,7 +58,7 @@ public class FileUtilsLocal {
     double fileSizeMB = fileSizeBytes / (1024.0 * 1024.0);
     double throughputMBps = durationMs > 0 ? (fileSizeMB / (durationMs / 1000.0)) : 0;
 
-    log.debug(String.format("Checksum computed for %s (%.2f MB) in %d ms (%.2f MB/s) - Algorithm: %s",
+    log.trace(String.format("Checksum computed for %s (%.2f MB) in %d ms (%.2f MB/s) - Algorithm: %s",
         file.getName(), fileSizeMB, durationMs, throughputMBps, digest.getAlgorithm()));
 
     // return complete hash
@@ -93,10 +93,8 @@ public class FileUtilsLocal {
       File[] files = dir.listFiles();
       for (File file : files) {
         if (file.isDirectory()) {
-          // log.debug(String.format("Directory: %s", file.getCanonicalPath()));
           getSourceDirectoryContentsArray(file.toString());
         } else {
-          // log.debug(String.format("File: %s", file.getCanonicalPath()));
           SourceFileArraySingleton.getInstance().addToArray(file.getCanonicalPath());
         }
       }
@@ -120,7 +118,7 @@ public class FileUtilsLocal {
         // Synchronized access to shared HashMap
         synchronized (SourceFileHashMapSingleton.getInstance().getMap()) {
           if (SourceFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum)) {
-            log.debug(
+            log.trace(
                 String.format(
                     "Hashmap already contains an entry for checksum: %s with filename of %s",
                     thisFileChecksum,
@@ -148,10 +146,8 @@ public class FileUtilsLocal {
       File[] files = dir.listFiles();
       for (File file : files) {
         if (file.isDirectory()) {
-          // log.debug(String.format("Directory: %s", file.getCanonicalPath()));
           getTargetDirectoryContentsArray(file.toString());
         } else {
-          // log.debug(String.format("File: %s", file.getCanonicalPath()));
           TargetFileArraySingleton.getInstance().addToArray(file.getCanonicalPath());
         }
       }
@@ -176,7 +172,7 @@ public class FileUtilsLocal {
         synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
           if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum)) {
             String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
-            log.debug(
+            log.trace(
                 String.format(
                     "Hashmap already contains an entry for checksum: %s with filename of %s",
                     thisFileChecksum, existingFile));
@@ -209,10 +205,8 @@ public class FileUtilsLocal {
     String filePathString = null;
     File filePath = null;
 
-    // log.debug(String.format("getting path for file: %s", file));
     try {
       filePathString = FilenameUtils.getFullPathNoEndSeparator(file);
-      // log.debug(String.format("Determined path: %s", filePathString));
       filePath = new File(filePathString);
     } catch (Exception e) {
       log.error(e.getMessage());
@@ -225,7 +219,6 @@ public class FileUtilsLocal {
     String fileNameString = null;
     File fileName = null;
 
-    // log.debug(String.format("getting path for file: %s", file));
     try {
       fileNameString = FilenameUtils.getName(file);
       fileName = new File(fileNameString);
@@ -277,13 +270,7 @@ public class FileUtilsLocal {
       ArrayList<File> sourceFilesToBackup = SourceFileBackupArraySingleton.getInstance().getArray();
       for (File filePath : sourceFilesToBackup) {
         try {
-          log.debug(String.format("Adding to zip file: %s", filePath));
-          // for ZipEntry we need to keep only relative file path, so we used substring on
-          // absolute
-          // path
-          // ZipEntry ze = new ZipEntry(filePath.substring(dir.getAbsolutePath().length()
-          // + 1,
-          // filePath.length()));
+          log.trace(String.format("Adding to zip file: %s", filePath));
           ZipEntry ze = new ZipEntry(filePath.toString());
           zos.putNextEntry(ze);
           // read the file and write to ZipOutputStream
@@ -309,7 +296,7 @@ public class FileUtilsLocal {
     File thisDirectory = new File(directory);
 
     if (thisDirectory.exists()) {
-      log.debug(String.format("Directory Exists: %s", thisDirectory));
+      log.trace(String.format("Directory Exists: %s", thisDirectory));
     } else {
       log.error(
           String.format("Directory provided (%s) does not exist, exiting now...", directory));

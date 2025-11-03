@@ -120,7 +120,7 @@ public class LogViewerController {
                     Thread.sleep(500);
                 }
             } catch (InterruptedException e) {
-                log.debug("Log tail thread interrupted");
+                log.error("Log tail thread interrupted");
             } catch (IOException e) {
                 log.error("Error tailing log file", e);
                 Platform.runLater(() -> logTextArea.appendText("\nError reading log file: " + e.getMessage() + "\n"));

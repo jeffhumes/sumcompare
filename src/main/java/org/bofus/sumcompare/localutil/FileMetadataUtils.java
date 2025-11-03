@@ -42,7 +42,7 @@ public class FileMetadataUtils {
                 Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(path);
                 log.info("POSIX Permissions: {}", formatPosixPermissions(permissions));
             } catch (UnsupportedOperationException e) {
-                log.debug("POSIX permissions not supported on this file system");
+                log.error("POSIX permissions not supported on this file system");
             }
 
         } catch (IOException e) {

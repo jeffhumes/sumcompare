@@ -54,12 +54,12 @@ public class FileTypeDetector {
 
         // Check by extension first (fastest)
         if (VIDEO_EXTENSIONS.contains(extension)) {
-            log.debug("File {} detected as VIDEO by extension", file.getName());
+            log.trace("File {} detected as VIDEO by extension", file.getName());
             return FileType.VIDEO;
         }
 
         if (IMAGE_EXTENSIONS.contains(extension)) {
-            log.debug("File {} detected as IMAGE by extension", file.getName());
+            log.trace("File {} detected as IMAGE by extension", file.getName());
             return FileType.IMAGE;
         }
 
@@ -68,16 +68,16 @@ public class FileTypeDetector {
             String mimeType = detectMimeType(file);
             if (mimeType != null) {
                 if (mimeType.startsWith("video/")) {
-                    log.debug("File {} detected as VIDEO by MIME type: {}", file.getName(), mimeType);
+                    log.trace("File {} detected as VIDEO by MIME type: {}", file.getName(), mimeType);
                     return FileType.VIDEO;
                 }
                 if (mimeType.startsWith("image/")) {
-                    log.debug("File {} detected as IMAGE by MIME type: {}", file.getName(), mimeType);
+                    log.trace("File {} detected as IMAGE by MIME type: {}", file.getName(), mimeType);
                     return FileType.IMAGE;
                 }
             }
         } catch (IOException e) {
-            log.debug("Could not detect MIME type for {}: {}", file.getName(), e.getMessage());
+            log.error("Could not detect MIME type for {}: {}", file.getName(), e.getMessage());
         }
 
         return FileType.OTHER;
