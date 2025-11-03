@@ -20,6 +20,11 @@ public class PropertiesObject {
 	private boolean sourceDuplicateCheckOnly;
 	private String dateTargetDirectory;
 	private boolean useMetadata;
+	private boolean renameDuplicates;
+	private String duplicatePrefix;
+	private boolean deleteEmptyFolders;
+	private boolean moveInsteadOfCopy;
+	private boolean permanentlyDelete;
 
 	public String getSourceLocation() {
 		return sourceLocation;
@@ -139,6 +144,46 @@ public class PropertiesObject {
 
 	public void setUseMetadata(boolean useMetadata) {
 		this.useMetadata = useMetadata;
+	}
+
+	public boolean isRenameDuplicates() {
+		return renameDuplicates;
+	}
+
+	public void setRenameDuplicates(boolean renameDuplicates) {
+		this.renameDuplicates = renameDuplicates;
+	}
+
+	public String getDuplicatePrefix() {
+		return duplicatePrefix;
+	}
+
+	public void setDuplicatePrefix(String duplicatePrefix) {
+		this.duplicatePrefix = duplicatePrefix;
+	}
+
+	public boolean isDeleteEmptyFolders() {
+		return deleteEmptyFolders;
+	}
+
+	public void setDeleteEmptyFolders(boolean deleteEmptyFolders) {
+		this.deleteEmptyFolders = deleteEmptyFolders;
+	}
+
+	public boolean isMoveInsteadOfCopy() {
+		return moveInsteadOfCopy;
+	}
+
+	public void setMoveInsteadOfCopy(boolean moveInsteadOfCopy) {
+		this.moveInsteadOfCopy = moveInsteadOfCopy;
+	}
+
+	public boolean isPermanentlyDelete() {
+		return permanentlyDelete;
+	}
+
+	public void setPermanentlyDelete(boolean permanentlyDelete) {
+		this.permanentlyDelete = permanentlyDelete;
 	}
 
 }

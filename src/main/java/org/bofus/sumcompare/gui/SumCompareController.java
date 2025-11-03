@@ -87,6 +87,16 @@ public class SumCompareController {
     private Button dateTargetBrowseButton;
     @FXML
     private CheckBox useMetadataCheckBox;
+    @FXML
+    private CheckBox renameDuplicatesCheckBox;
+    @FXML
+    private TextField duplicatePrefixField;
+    @FXML
+    private CheckBox deleteEmptyFoldersCheckBox;
+    @FXML
+    private CheckBox moveFilesCheckBox;
+    @FXML
+    private CheckBox permanentlyDeleteCheckBox;
 
     private Task<Void> currentTask;
     private Task<Void> timerTask;
@@ -160,6 +170,33 @@ public class SumCompareController {
         }
         if (useMetadataCheckBox != null) {
             useMetadataCheckBox.setDisable(true);
+        }
+
+        // Initialize rename duplicates controls
+        if (duplicatePrefixField != null) {
+            duplicatePrefixField.setDisable(true); // Disabled by default
+        }
+        if (renameDuplicatesCheckBox != null) {
+            renameDuplicatesCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+                if (duplicatePrefixField != null) {
+                    duplicatePrefixField.setDisable(!newValue);
+                }
+            });
+        }
+
+        // Initialize move/delete controls
+        if (permanentlyDeleteCheckBox != null) {
+            permanentlyDeleteCheckBox.setDisable(true); // Disabled by default
+        }
+        if (moveFilesCheckBox != null) {
+            moveFilesCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+                if (permanentlyDeleteCheckBox != null) {
+                    permanentlyDeleteCheckBox.setDisable(!newValue);
+                    if (!newValue) {
+                        permanentlyDeleteCheckBox.setSelected(false);
+                    }
+                }
+            });
         }
 
         // Initialize progress bar to 0
@@ -386,6 +423,22 @@ public class SumCompareController {
                     props.setSourceDuplicateCheckOnly(sourceDuplicateCheckBox.isSelected());
                     props.setUseMetadata(useMetadataCheckBox != null && useMetadataCheckBox.isSelected());
 
+                    // Set duplicate renaming options
+                    props.setRenameDuplicates(
+                            renameDuplicatesCheckBox != null && renameDuplicatesCheckBox.isSelected());
+                    if (duplicatePrefixField != null && !duplicatePrefixField.getText().trim().isEmpty()) {
+                        props.setDuplicatePrefix(duplicatePrefixField.getText().trim());
+                    } else {
+                        props.setDuplicatePrefix("DUPLICATE_FILE_");
+                    }
+
+                    // Set cleanup options
+                    props.setDeleteEmptyFolders(
+                            deleteEmptyFoldersCheckBox != null && deleteEmptyFoldersCheckBox.isSelected());
+                    props.setMoveInsteadOfCopy(moveFilesCheckBox != null && moveFilesCheckBox.isSelected());
+                    props.setPermanentlyDelete(
+                            permanentlyDeleteCheckBox != null && permanentlyDeleteCheckBox.isSelected());
+
                     // Set date-based folder organization
                     if (dateFoldersCheckBox != null && dateFoldersCheckBox.isSelected()) {
                         props.setOrganizeDateFolders(true);
@@ -518,6 +571,9 @@ public class SumCompareController {
                     updateCopiedCount(copied);
                     updateDuplicatesCount(duplicates);
 
+                    // Delete empty folders in source if enabled
+                    deleteEmptyFolders(props.getSourceLocation(), props);
+
                     updateMessage("\n=== COMPLETED SUCCESSFULLY ===");
                     updateMessage("Files copied: " + copied);
                     updateMessage("Duplicates found: " + duplicates);
@@ -615,8 +671,9 @@ public class SumCompareController {
 
                         if (props.isDryRun()) {
                             String fileName = thisSourceFile.getName();
-                            String logMsg = String.format("Would organize [%s]: %s (%s)",
-                                    fileTypeDesc, fileName, metadata.getSummary());
+                            String action = props.isMoveInsteadOfCopy() ? "move and organize" : "organize";
+                            String logMsg = String.format("Would %s [%s]: %s (%s)",
+                                    action, fileTypeDesc, fileName, metadata.getSummary());
                             Platform.runLater(() -> appendLog(logMsg));
                         } else {
                             File targetFile = new File(targetPath);
@@ -624,12 +681,32 @@ public class SumCompareController {
                             // Ensure date-based folder exists before copying
                             org.bofus.sumcompare.localutil.DateFolderOrganizer.ensureDateFolderExists(targetFile);
 
-                            org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                    props.isPreserveFileDate());
-                            String fileName = thisSourceFile.getName();
-                            String logMsg = String.format("Organized [%s]: %s (%s)",
-                                    fileTypeDesc, fileName, metadata.getSummary());
-                            Platform.runLater(() -> appendLog(logMsg));
+                            if (props.isMoveInsteadOfCopy()) {
+                                // Move file: copy then delete/trash source
+                                org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
+                                        props.isPreserveFileDate());
+                                if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
+                                    String fileName = thisSourceFile.getName();
+                                    String action = props.isPermanentlyDelete() ? "Moved (deleted)"
+                                            : "Moved (to trash)";
+                                    String logMsg = String.format("%s [%s]: %s (%s)",
+                                            action, fileTypeDesc, fileName, metadata.getSummary());
+                                    Platform.runLater(() -> appendLog(logMsg));
+                                } else {
+                                    String fileName = thisSourceFile.getName();
+                                    String logMsg = String.format("Copied but failed to delete source [%s]: %s (%s)",
+                                            fileTypeDesc, fileName, metadata.getSummary());
+                                    Platform.runLater(() -> appendLog(logMsg));
+                                }
+                            } else {
+                                // Normal copy
+                                org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
+                                        props.isPreserveFileDate());
+                                String fileName = thisSourceFile.getName();
+                                String logMsg = String.format("Organized [%s]: %s (%s)",
+                                        fileTypeDesc, fileName, metadata.getSummary());
+                                Platform.runLater(() -> appendLog(logMsg));
+                            }
                         }
 
                         updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
@@ -643,13 +720,41 @@ public class SumCompareController {
                             String sourceFileName = FileUtilsLocal.getFileName(sourceFile);
                             String targetFileName = FileUtilsLocal.getFileName(existingFile);
 
-                            if (sourceFileName.equals(targetFileName)) {
+                            // Handle duplicate: either rename source file or just log it
+                            if (props.isRenameDuplicates()) {
+                                // Rename the duplicate source file
+                                String prefix = props.getDuplicatePrefix();
+                                File sourceFileObj = new File(sourceFile);
+                                String newFileName = prefix + sourceFileObj.getName();
+                                File renamedFile = new File(sourceFileObj.getParent(), newFileName);
+
+                                if (props.isDryRun()) {
+                                    String logMsg = String.format("Would rename duplicate [%s]: %s -> %s (%s)",
+                                            fileTypeDesc, sourceFileName, newFileName, metadata.getSummary());
+                                    Platform.runLater(() -> appendLog(logMsg));
+                                } else {
+                                    // Actually rename the file
+                                    if (sourceFileObj.renameTo(renamedFile)) {
+                                        String logMsg = String.format("Renamed duplicate [%s]: %s -> %s (%s)",
+                                                fileTypeDesc, sourceFileName, newFileName, metadata.getSummary());
+                                        Platform.runLater(() -> appendLog(logMsg));
+                                    } else {
+                                        String logMsg = String.format("Failed to rename [%s]: %s (%s)",
+                                                fileTypeDesc, sourceFileName, metadata.getSummary());
+                                        Platform.runLater(() -> appendLog(logMsg));
+                                    }
+                                }
                                 MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                             } else {
-                                String logMsg = String.format("Duplicate [%s]: %s -> %s (%s)",
-                                        fileTypeDesc, sourceFileName, existingFile, metadata.getSummary());
-                                Platform.runLater(() -> appendLog(logMsg));
-                                MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
+                                // Original behavior: just log the duplicate
+                                if (sourceFileName.equals(targetFileName)) {
+                                    MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
+                                } else {
+                                    String logMsg = String.format("Duplicate [%s]: %s -> %s (%s)",
+                                            fileTypeDesc, sourceFileName, existingFile, metadata.getSummary());
+                                    Platform.runLater(() -> appendLog(logMsg));
+                                    MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
+                                }
                             }
                         } else {
                             // File needs to be copied
@@ -658,8 +763,9 @@ public class SumCompareController {
 
                             if (props.isDryRun()) {
                                 String fileName = thisSourceFile.getName();
-                                String logMsg = String.format("Would copy [%s]: %s (%s)",
-                                        fileTypeDesc, fileName, metadata.getSummary());
+                                String action = props.isMoveInsteadOfCopy() ? "move" : "copy";
+                                String logMsg = String.format("Would %s [%s]: %s (%s)",
+                                        action, fileTypeDesc, fileName, metadata.getSummary());
                                 Platform.runLater(() -> appendLog(logMsg));
                             } else {
                                 File targetFile = new File(targetPath);
@@ -670,12 +776,33 @@ public class SumCompareController {
                                             .ensureDateFolderExists(targetFile);
                                 }
 
-                                org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                        props.isPreserveFileDate());
-                                String fileName = thisSourceFile.getName();
-                                String logMsg = String.format("Copied [%s]: %s (%s)",
-                                        fileTypeDesc, fileName, metadata.getSummary());
-                                Platform.runLater(() -> appendLog(logMsg));
+                                if (props.isMoveInsteadOfCopy()) {
+                                    // Move file: copy then delete source
+                                    org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
+                                            props.isPreserveFileDate());
+                                    if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
+                                        String fileName = thisSourceFile.getName();
+                                        String action = props.isPermanentlyDelete() ? "deleted" : "to trash";
+                                        String logMsg = String.format("Moved (%s) [%s]: %s (%s)",
+                                                action, fileTypeDesc, fileName, metadata.getSummary());
+                                        Platform.runLater(() -> appendLog(logMsg));
+                                    } else {
+                                        String fileName = thisSourceFile.getName();
+                                        String action = props.isPermanentlyDelete() ? "delete" : "trash";
+                                        String logMsg = String.format(
+                                                "Copied but failed to %s source [%s]: %s (%s)",
+                                                action, fileTypeDesc, fileName, metadata.getSummary());
+                                        Platform.runLater(() -> appendLog(logMsg));
+                                    }
+                                } else {
+                                    // Normal copy
+                                    org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
+                                            props.isPreserveFileDate());
+                                    String fileName = thisSourceFile.getName();
+                                    String logMsg = String.format("Copied [%s]: %s (%s)",
+                                            fileTypeDesc, fileName, metadata.getSummary());
+                                    Platform.runLater(() -> appendLog(logMsg));
+                                }
                             }
 
                             updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
@@ -797,6 +924,97 @@ public class SumCompareController {
                 statusLabel.setStyle(""); // Reset to default
             }
         });
+    }
+
+    /**
+     * Deletes or moves a file to trash based on the permanently delete setting.
+     * 
+     * @param file              the file to delete
+     * @param permanentlyDelete if true, permanently delete; if false, move to trash
+     * @return true if the operation was successful
+     */
+    private boolean deleteOrTrashFile(File file, boolean permanentlyDelete) {
+        if (permanentlyDelete) {
+            // Permanent deletion
+            return file.delete();
+        } else {
+            // Try to move to trash using Desktop API
+            if (java.awt.Desktop.isDesktopSupported()) {
+                try {
+                    java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
+                    if (desktop.isSupported(java.awt.Desktop.Action.MOVE_TO_TRASH)) {
+                        return desktop.moveToTrash(file);
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to move file to trash, falling back to permanent delete: {}", file.getName(), e);
+                }
+            }
+            // Fallback to permanent delete if trash is not supported
+            log.warn("Trash not supported on this system, permanently deleting: {}", file.getName());
+            return file.delete();
+        }
+    }
+
+    private void deleteEmptyFolders(String sourceDirectory, PropertiesObject props) {
+        if (!props.isDeleteEmptyFolders() || props.isDryRun()) {
+            return;
+        }
+
+        File sourceDir = new File(sourceDirectory);
+        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
+            return;
+        }
+
+        Platform.runLater(() -> appendLog("Cleaning up empty folders..."));
+        int deletedCount = deleteEmptyFoldersRecursive(sourceDir, sourceDir);
+        if (deletedCount > 0) {
+            int finalCount = deletedCount;
+            Platform.runLater(() -> appendLog("Deleted " + finalCount + " empty folder(s)"));
+        } else {
+            Platform.runLater(() -> appendLog("No empty folders found"));
+        }
+    }
+
+    private int deleteEmptyFoldersRecursive(File directory, File rootDir) {
+        int deletedCount = 0;
+
+        if (directory == null || !directory.exists() || !directory.isDirectory()) {
+            return 0;
+        }
+
+        // Don't delete the root source directory itself
+        if (directory.equals(rootDir)) {
+            File[] children = directory.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    if (child.isDirectory()) {
+                        deletedCount += deleteEmptyFoldersRecursive(child, rootDir);
+                    }
+                }
+            }
+            return deletedCount;
+        }
+
+        // First, recursively process subdirectories
+        File[] children = directory.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                if (child.isDirectory()) {
+                    deletedCount += deleteEmptyFoldersRecursive(child, rootDir);
+                }
+            }
+        }
+
+        // After processing children, check if this directory is now empty
+        children = directory.listFiles();
+        if (children != null && children.length == 0) {
+            if (directory.delete()) {
+                log.debug("Deleted empty folder: {}", directory.getAbsolutePath());
+                deletedCount++;
+            }
+        }
+
+        return deletedCount;
     }
 
     private void updateStartButtonState() {

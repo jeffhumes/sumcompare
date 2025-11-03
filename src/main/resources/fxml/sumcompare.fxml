@@ -62,6 +62,11 @@
         <CheckBox fx:id="backupCheckBox" text="Backup source first"/>
         <CheckBox fx:id="preserveDateCheckBox" text="Preserve file dates"/>
         <CheckBox fx:id="createReportCheckBox" text="Create Excel report"/>
+        <CheckBox fx:id="moveFilesCheckBox" text="Move files instead of copying (deletes source after copy)"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="  " prefWidth="20"/>
+            <CheckBox fx:id="permanentlyDeleteCheckBox" text="Permanently delete moved files (skip trash)"/>
+        </HBox>
         
         <!-- Date-Based Organization -->
         <Separator/>
@@ -78,6 +83,18 @@
             <Button fx:id="dateTargetBrowseButton" text="Browse..." onAction="#onBrowseDateTarget" minWidth="80"/>
         </HBox>
         <CheckBox fx:id="useMetadataCheckBox" text="Use image/video metadata dates when available (EXIF, etc.)"/>
+        
+        <!-- Duplicate Handling -->
+        <Separator/>
+        <CheckBox fx:id="renameDuplicatesCheckBox" text="Rename duplicate source files (instead of skipping)"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Duplicate Prefix:" prefWidth="100"/>
+            <TextField fx:id="duplicatePrefixField" text="DUPLICATE_FILE_" promptText="DUPLICATE_FILE_" prefWidth="200"/>
+        </HBox>
+        
+        <!-- Cleanup -->
+        <Separator/>
+        <CheckBox fx:id="deleteEmptyFoldersCheckBox" text="Delete empty folders in source after completion"/>
     </VBox>
 
     <Separator/>
