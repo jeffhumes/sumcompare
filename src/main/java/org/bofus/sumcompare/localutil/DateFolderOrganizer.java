@@ -72,27 +72,64 @@ public class DateFolderOrganizer {
      * @throws IOException If metadata cannot be retrieved
      */
     public static String getDateBasedFolder(File file, DateSource dateSource, DatePattern pattern) throws IOException {
-        FileMetadata metadata = FileMetadata.fromFile(file);
+        return getDateBasedFolder(file, dateSource, pattern, false);
+    }
 
-        // Get the appropriate timestamp based on dateSource
-        String timestamp;
-        switch (dateSource) {
-            case CREATED:
-                timestamp = metadata.getCreationTime();
-                break;
-            case ACCESSED:
-                timestamp = metadata.getLastAccessTime();
-                break;
-            case MODIFIED:
-            default:
-                timestamp = metadata.getLastModifiedTime();
-                break;
+    /**
+     * Generates a date-based folder path for the given file, optionally using
+     * image/video metadata.
+     * 
+     * @param file        The file to organize
+     * @param dateSource  Which timestamp to use (created, modified, or accessed)
+     * @param pattern     The folder structure pattern
+     * @param useMetadata Whether to try extracting date from image/video metadata
+     *                    (EXIF, etc.)
+     * @return The date-based folder path (e.g., "2024-10" or "2024/10/31")
+     * @throws IOException If metadata cannot be retrieved
+     */
+    public static String getDateBasedFolder(File file, DateSource dateSource, DatePattern pattern, boolean useMetadata)
+            throws IOException {
+        LocalDateTime dateTime = null;
+
+        // Try to use media metadata if enabled and file is a supported media type
+        if (useMetadata && MediaMetadataExtractor.isSupportedMediaFile(file)) {
+            try {
+                java.time.Instant metadataDate = MediaMetadataExtractor.extractCreationDate(file);
+                if (metadataDate != null) {
+                    dateTime = LocalDateTime.ofInstant(metadataDate, java.time.ZoneId.systemDefault());
+                    log.debug("Using metadata date for {}: {}", file.getName(), dateTime);
+                }
+            } catch (Exception e) {
+                log.debug("Could not extract metadata date for {}, falling back to file system: {}",
+                        file.getName(), e.getMessage());
+            }
         }
 
-        // Parse the timestamp and format according to pattern
-        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime dateTime = LocalDateTime.parse(timestamp, inputFormatter);
+        // Fallback to file system metadata if no media metadata was found
+        if (dateTime == null) {
+            FileMetadata metadata = FileMetadata.fromFile(file);
 
+            // Get the appropriate timestamp based on dateSource
+            String timestamp;
+            switch (dateSource) {
+                case CREATED:
+                    timestamp = metadata.getCreationTime();
+                    break;
+                case ACCESSED:
+                    timestamp = metadata.getLastAccessTime();
+                    break;
+                case MODIFIED:
+                default:
+                    timestamp = metadata.getLastModifiedTime();
+                    break;
+            }
+
+            // Parse the timestamp
+            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            dateTime = LocalDateTime.parse(timestamp, inputFormatter);
+        }
+
+        // Format according to pattern
         // Handle quarter pattern specially
         if (pattern == DatePattern.YEAR_QUARTER) {
             int month = dateTime.getMonthValue();
@@ -119,7 +156,28 @@ public class DateFolderOrganizer {
     public static File generateDateBasedTargetPath(File sourceFile, File baseTargetDir,
             DateSource dateSource, DatePattern pattern,
             boolean keepSourceStructure) throws IOException {
-        String dateFolder = getDateBasedFolder(sourceFile, dateSource, pattern);
+        return generateDateBasedTargetPath(sourceFile, baseTargetDir, dateSource, pattern,
+                keepSourceStructure, false);
+    }
+
+    /**
+     * Generates the complete target path including date-based folder structure.
+     * 
+     * @param sourceFile          The source file being copied
+     * @param baseTargetDir       The base target directory
+     * @param dateSource          Which timestamp to use
+     * @param pattern             The folder structure pattern
+     * @param keepSourceStructure Whether to preserve source directory structure
+     *                            after date folder
+     * @param useMetadata         Whether to try extracting date from image/video
+     *                            metadata
+     * @return The complete target file path with date-based folders
+     * @throws IOException If metadata cannot be retrieved
+     */
+    public static File generateDateBasedTargetPath(File sourceFile, File baseTargetDir,
+            DateSource dateSource, DatePattern pattern,
+            boolean keepSourceStructure, boolean useMetadata) throws IOException {
+        String dateFolder = getDateBasedFolder(sourceFile, dateSource, pattern, useMetadata);
 
         if (keepSourceStructure) {
             // Preserve source structure within date folder

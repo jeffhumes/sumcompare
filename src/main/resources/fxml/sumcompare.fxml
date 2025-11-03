@@ -72,6 +72,12 @@
             <Label text="Folder Pattern:" prefWidth="100"/>
             <ComboBox fx:id="datePatternComboBox" prefWidth="200"/>
         </HBox>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Date Target Dir:" prefWidth="100"/>
+            <TextField fx:id="dateTargetField" promptText="(defaults to source directory)" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="dateTargetBrowseButton" text="Browse..." onAction="#onBrowseDateTarget" minWidth="80"/>
+        </HBox>
+        <CheckBox fx:id="useMetadataCheckBox" text="Use image/video metadata dates when available (EXIF, etc.)"/>
     </VBox>
 
     <Separator/>

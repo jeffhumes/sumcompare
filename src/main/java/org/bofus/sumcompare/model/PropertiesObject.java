@@ -17,6 +17,9 @@ public class PropertiesObject {
 	private boolean organizeDateFolders;
 	private DateFolderOrganizer.DateSource dateSource;
 	private DateFolderOrganizer.DatePattern datePattern;
+	private boolean sourceDuplicateCheckOnly;
+	private String dateTargetDirectory;
+	private boolean useMetadata;
 
 	public String getSourceLocation() {
 		return sourceLocation;
@@ -112,6 +115,30 @@ public class PropertiesObject {
 
 	public void setDatePattern(DateFolderOrganizer.DatePattern datePattern) {
 		this.datePattern = datePattern;
+	}
+
+	public boolean isSourceDuplicateCheckOnly() {
+		return sourceDuplicateCheckOnly;
+	}
+
+	public void setSourceDuplicateCheckOnly(boolean sourceDuplicateCheckOnly) {
+		this.sourceDuplicateCheckOnly = sourceDuplicateCheckOnly;
+	}
+
+	public String getDateTargetDirectory() {
+		return dateTargetDirectory;
+	}
+
+	public void setDateTargetDirectory(String dateTargetDirectory) {
+		this.dateTargetDirectory = dateTargetDirectory;
+	}
+
+	public boolean isUseMetadata() {
+		return useMetadata;
+	}
+
+	public void setUseMetadata(boolean useMetadata) {
+		this.useMetadata = useMetadata;
 	}
 
 }
