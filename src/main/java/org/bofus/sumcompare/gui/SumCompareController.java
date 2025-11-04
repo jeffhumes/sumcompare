@@ -56,6 +56,12 @@ public class SumCompareController {
     @FXML
     private CheckBox createReportCheckBox;
     @FXML
+    private CheckBox writeLogToFileCheckBox;
+    @FXML
+    private TextField logDirectoryField;
+    @FXML
+    private Button logDirectoryBrowseButton;
+    @FXML
     private Button startButton;
     @FXML
     private Button cancelButton;
@@ -199,6 +205,33 @@ public class SumCompareController {
             });
         }
 
+        // Initialize file logging control
+        if (writeLogToFileCheckBox != null) {
+            // Set default log directory
+            String defaultLogDir = System.getProperty("user.home") + "/.sumcompare/logs";
+            if (logDirectoryField != null) {
+                logDirectoryField.setText(defaultLogDir);
+                logDirectoryField.setDisable(true); // Disabled by default
+            }
+            if (logDirectoryBrowseButton != null) {
+                logDirectoryBrowseButton.setDisable(true); // Disabled by default
+            }
+
+            // Set initial state - file logging disabled by default
+            writeLogToFileCheckBox.setSelected(false);
+
+            // Add listener to enable/disable file logging and controls
+            writeLogToFileCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+                if (logDirectoryField != null) {
+                    logDirectoryField.setDisable(!newValue);
+                }
+                if (logDirectoryBrowseButton != null) {
+                    logDirectoryBrowseButton.setDisable(!newValue);
+                }
+                setFileLoggingEnabled(newValue);
+            });
+        }
+
         // Initialize progress bar to 0
         progressBar.setProgress(0.0);
 
@@ -266,6 +299,31 @@ public class SumCompareController {
         if (selected != null) {
             targetTextField.setText(selected.getAbsolutePath());
             appendLog("Target directory selected: " + selected.getAbsolutePath());
+        }
+    }
+
+    @FXML
+    private void onBrowseLogDirectory() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Select Log Directory");
+
+        if (logDirectoryField.getText() != null && !logDirectoryField.getText().isEmpty()) {
+            File current = new File(logDirectoryField.getText());
+            if (current.exists()) {
+                chooser.setInitialDirectory(current);
+            }
+        }
+
+        File selected = chooser.showDialog(getStage());
+        if (selected != null) {
+            logDirectoryField.setText(selected.getAbsolutePath());
+            appendLog("Log directory changed to: " + selected.getAbsolutePath());
+
+            // Reconfigure the file appender with new location
+            if (writeLogToFileCheckBox.isSelected()) {
+                setFileLoggingEnabled(false);
+                setFileLoggingEnabled(true);
+            }
         }
     }
 
@@ -351,6 +409,28 @@ public class SumCompareController {
 
     @FXML
     private void onViewLog() {
+        // Ask user where to display the log
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("View Additional Logging");
+        alert.setHeaderText("Where would you like to view the log?");
+        alert.setContentText("Choose your option:");
+
+        ButtonType newWindowButton = new ButtonType("New Window");
+        ButtonType currentWindowButton = new ButtonType("Current Output");
+        ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        alert.getButtonTypes().setAll(newWindowButton, currentWindowButton, cancelButton);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == newWindowButton) {
+                openLogInNewWindow();
+            } else if (response == currentWindowButton) {
+                showLogInCurrentOutput();
+            }
+        });
+    }
+
+    private void openLogInNewWindow() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/logviewer.fxml"));
             Parent root = loader.load();
@@ -371,6 +451,54 @@ public class SumCompareController {
         } catch (IOException e) {
             log.error("Failed to open log viewer", e);
             showError("Failed to open log viewer: " + e.getMessage());
+        }
+    }
+
+    private void showLogInCurrentOutput() {
+        try {
+            // Get log directory from field or use default
+            String logDir = logDirectoryField != null && !logDirectoryField.getText().isEmpty()
+                    ? logDirectoryField.getText()
+                    : System.getProperty("user.home") + "/.sumcompare/logs";
+
+            File logDirFile = new File(logDir);
+
+            if (!logDirFile.exists() || !logDirFile.isDirectory()) {
+                appendLog("Log directory not found: " + logDir);
+                appendLog("Note: Enable 'Write detailed log to file' checkbox to create log files.");
+                return;
+            }
+
+            // Find the most recent log file
+            File[] logFiles = logDirFile
+                    .listFiles((dir, name) -> name.startsWith("sumcompare_") && name.endsWith(".log"));
+            if (logFiles == null || logFiles.length == 0) {
+                appendLog("No log files found in: " + logDir);
+                appendLog("Note: Enable 'Write detailed log to file' checkbox to create log files.");
+                return;
+            }
+
+            // Sort by last modified time to get the most recent
+            java.util.Arrays.sort(logFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+            File logFile = logFiles[0];
+
+            // Clear current output and show log content
+            logTextArea.clear();
+            appendLog("=== Application Log ===\n");
+            appendLog("Location: " + logFile.getAbsolutePath() + "\n");
+            appendLog("Last Modified: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    .format(new java.util.Date(logFile.lastModified())) + "\n\n");
+
+            java.nio.file.Files.lines(logFile.toPath())
+                    .forEach(line -> logTextArea.appendText(line + "\n"));
+
+            // Scroll to bottom
+            logTextArea.setScrollTop(Double.MAX_VALUE);
+
+            log.info("Log displayed in current output window");
+        } catch (IOException e) {
+            log.error("Failed to read log file", e);
+            showError("Failed to read log file: " + e.getMessage());
         }
     }
 
@@ -1044,6 +1172,11 @@ public class SumCompareController {
         Platform.runLater(() -> {
             logTextArea.appendText(message + "\n");
         });
+
+        // Also log to file if file logging is enabled
+        if (writeLogToFileCheckBox != null && writeLogToFileCheckBox.isSelected()) {
+            log.info("[UI] {}", message);
+        }
     }
 
     private void updateScannedCount(int count) {
@@ -1089,5 +1222,73 @@ public class SumCompareController {
 
     private Stage getStage() {
         return (Stage) sourceTextField.getScene().getWindow();
+    }
+
+    /**
+     * Enables or disables file logging by controlling the FILE appender in Logback.
+     * Creates a new file appender with timestamped filename in the user-selected
+     * directory.
+     * 
+     * @param enabled true to enable file logging, false to disable
+     */
+    private void setFileLoggingEnabled(boolean enabled) {
+        try {
+            ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory
+                    .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+
+            // Remove existing file appender if present
+            ch.qos.logback.core.Appender<?> existingAppender = rootLogger.getAppender("FILE");
+            if (existingAppender != null) {
+                existingAppender.stop();
+                rootLogger.detachAppender("FILE");
+            }
+
+            if (enabled) {
+                // Get log directory from field or use default
+                String logDir = logDirectoryField != null && !logDirectoryField.getText().isEmpty()
+                        ? logDirectoryField.getText()
+                        : System.getProperty("user.home") + "/.sumcompare/logs";
+
+                // Create log directory if it doesn't exist
+                File logDirFile = new File(logDir);
+                if (!logDirFile.exists()) {
+                    logDirFile.mkdirs();
+                }
+
+                // Generate timestamped filename
+                String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+                String logFilePath = logDir + "/sumcompare_" + timestamp + ".log";
+
+                // Create new file appender
+                ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory
+                        .getILoggerFactory();
+
+                ch.qos.logback.core.FileAppender<ch.qos.logback.classic.spi.ILoggingEvent> fileAppender = new ch.qos.logback.core.FileAppender<>();
+                fileAppender.setContext(loggerContext);
+                fileAppender.setName("FILE");
+                fileAppender.setFile(logFilePath);
+                fileAppender.setAppend(true);
+
+                // Set encoder pattern
+                ch.qos.logback.classic.encoder.PatternLayoutEncoder encoder = new ch.qos.logback.classic.encoder.PatternLayoutEncoder();
+                encoder.setContext(loggerContext);
+                encoder.setPattern("%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n");
+                encoder.start();
+
+                fileAppender.setEncoder(encoder);
+                fileAppender.start();
+
+                rootLogger.addAppender(fileAppender);
+
+                log.info("File logging enabled: {}", logFilePath);
+                appendLog("File logging enabled: " + logFilePath);
+            } else {
+                log.info("File logging disabled");
+                appendLog("File logging disabled");
+            }
+        } catch (Exception e) {
+            log.error("Failed to toggle file logging", e);
+            showError("Failed to toggle file logging: " + e.getMessage());
+        }
     }
 }

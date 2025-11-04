@@ -62,6 +62,13 @@
         <CheckBox fx:id="backupCheckBox" text="Backup source first (warning: increases processing time)" selected="true"/>
         <CheckBox fx:id="preserveDateCheckBox" text="Preserve file dates" selected="true"/>
         <CheckBox fx:id="createReportCheckBox" text="Create Excel report"/>
+        <CheckBox fx:id="writeLogToFileCheckBox" text="Write detailed log to file" selected="false"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="  " prefWidth="20"/>
+            <Label text="Log Directory:" prefWidth="90"/>
+            <TextField fx:id="logDirectoryField" promptText="~/.sumcompare/logs" HBox.hgrow="ALWAYS" editable="false"/>
+            <Button fx:id="logDirectoryBrowseButton" text="Browse..." onAction="#onBrowseLogDirectory" minWidth="80"/>
+        </HBox>
         <CheckBox fx:id="moveFilesCheckBox" text="Move files instead of copying (deletes source after copy)"/>
         <HBox spacing="10" alignment="CENTER_LEFT">
             <Label text="  " prefWidth="20"/>
@@ -106,7 +113,7 @@
         <Button fx:id="cancelButton" text="Cancel" onAction="#onCancel" 
                minWidth="100" disable="true"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button text="View Log" onAction="#onViewLog" minWidth="90"/>
+        <Button text="View Additional Logging" onAction="#onViewLog" minWidth="90"/>
         <Button text="Help" onAction="#onHelp" minWidth="80"/>
     </HBox>
 

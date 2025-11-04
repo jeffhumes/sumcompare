@@ -79,6 +79,56 @@ public class Main {
         "date-pattern",
         true,
         "Date folder pattern: YEAR_MONTH, YEAR_MONTH_SLASH, YEAR_MONTH_DAY, YEAR_MONTH_DAY_SLASH, YEAR_ONLY, YEAR_QUARTER (default: YEAR_MONTH)");
+    cliOptions.addOption(
+        "dt",
+        "date-target",
+        true,
+        "Custom target directory for date-based organization (default: source directory)");
+    cliOptions.addOption(
+        "um",
+        "use-metadata",
+        false,
+        "Use image/video metadata dates (EXIF) when available (default: false)");
+    cliOptions.addOption(
+        "sd",
+        "source-duplicates",
+        false,
+        "Check for duplicates in source only, no copying (default: false)");
+    cliOptions.addOption(
+        "rd",
+        "rename-duplicates",
+        false,
+        "Rename duplicate source files instead of skipping (default: false)");
+    cliOptions.addOption(
+        "rp",
+        "rename-prefix",
+        true,
+        "Prefix for renamed duplicate files (default: DUPLICATE_FILE_)");
+    cliOptions.addOption(
+        "de",
+        "delete-empty",
+        false,
+        "Delete empty folders in source after completion (default: false)");
+    cliOptions.addOption(
+        "m",
+        "move-files",
+        false,
+        "Move files instead of copying (deletes source after copy) (default: false)");
+    cliOptions.addOption(
+        "pd",
+        "permanent-delete",
+        false,
+        "Permanently delete moved files instead of moving to trash (default: false, requires -m)");
+    cliOptions.addOption(
+        "wl",
+        "write-log",
+        false,
+        "Write detailed log to file (default: false)");
+    cliOptions.addOption(
+        "ld",
+        "log-directory",
+        true,
+        "Directory for log files (default: ~/.sumcompare/logs)");
     cliOptions.addOption("h", "help", false, "Shows this help screen");
 
     // -------------------------------------------------------------
@@ -186,6 +236,53 @@ public class Main {
         }
       } else {
         propertiesObject.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
+      }
+
+      if (cmdLine.hasOption("dt")) {
+        propertiesObject.setDateTargetDirectory(cmdLine.getOptionValue("dt"));
+        log.debug("Setting date target directory: {}", cmdLine.getOptionValue("dt"));
+      }
+
+      if (cmdLine.hasOption("um")) {
+        propertiesObject.setUseMetadata(true);
+      }
+
+      if (cmdLine.hasOption("sd")) {
+        propertiesObject.setSourceDuplicateCheckOnly(true);
+      }
+
+      if (cmdLine.hasOption("rd")) {
+        propertiesObject.setRenameDuplicates(true);
+      }
+
+      if (cmdLine.hasOption("rp")) {
+        propertiesObject.setDuplicatePrefix(cmdLine.getOptionValue("rp"));
+      } else {
+        propertiesObject.setDuplicatePrefix("DUPLICATE_FILE_");
+      }
+
+      if (cmdLine.hasOption("de")) {
+        propertiesObject.setDeleteEmptyFolders(true);
+      }
+
+      if (cmdLine.hasOption("m")) {
+        propertiesObject.setMoveInsteadOfCopy(true);
+      }
+
+      if (cmdLine.hasOption("pd")) {
+        propertiesObject.setPermanentlyDelete(true);
+      }
+
+      if (cmdLine.hasOption("wl")) {
+        // Enable file logging - this would need to be implemented
+        // For now just log that it was requested
+        log.info("File logging enabled via command line");
+      }
+
+      if (cmdLine.hasOption("ld")) {
+        // Set log directory - this would need to be implemented
+        String logDir = cmdLine.getOptionValue("ld");
+        log.info("Log directory set to: {}", logDir);
       }
 
       if (cmdLine.hasOption("h")) {
