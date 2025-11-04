@@ -503,6 +503,148 @@ public class SumCompareController {
     }
 
     @FXML
+    private void onShowCliCommand() {
+        StringBuilder cliCommand = new StringBuilder("java -jar sumcompare.jar");
+
+        // Required options
+        if (sourceTextField.getText() != null && !sourceTextField.getText().trim().isEmpty()) {
+            cliCommand.append(" -s \"").append(sourceTextField.getText()).append("\"");
+        } else {
+            showError("Source directory is required");
+            return;
+        }
+
+        if (!sourceDuplicateCheckBox.isSelected()) {
+            if (targetTextField.getText() != null && !targetTextField.getText().trim().isEmpty()) {
+                cliCommand.append(" -t \"").append(targetTextField.getText()).append("\"");
+            } else {
+                showError("Target directory is required (unless in source duplicate check mode)");
+                return;
+            }
+        } else {
+            cliCommand.append(" -sd");
+            cliCommand.append(" -t \"").append(sourceTextField.getText()).append("\"");
+        }
+
+        if (algorithmComboBox.getValue() != null) {
+            cliCommand.append(" -z ").append(algorithmComboBox.getValue());
+        } else {
+            showError("Checksum algorithm is required");
+            return;
+        }
+
+        // Optional flags
+        if (dryRunCheckBox.isSelected()) {
+            cliCommand.append(" -d");
+        }
+
+        if (keepStructureCheckBox.isSelected()) {
+            cliCommand.append(" -k");
+        }
+
+        if (backupCheckBox.isSelected()) {
+            cliCommand.append(" -b");
+        }
+
+        if (preserveDateCheckBox.isSelected()) {
+            cliCommand.append(" -p");
+        }
+
+        if (createReportCheckBox.isSelected()) {
+            cliCommand.append(" -o");
+        }
+
+        if (moveFilesCheckBox != null && moveFilesCheckBox.isSelected()) {
+            cliCommand.append(" -m");
+
+            if (permanentlyDeleteCheckBox != null && permanentlyDeleteCheckBox.isSelected()) {
+                cliCommand.append(" -pd");
+            }
+        }
+
+        // Date-based organization options
+        if (dateFoldersCheckBox != null && dateFoldersCheckBox.isSelected()) {
+            cliCommand.append(" -df");
+
+            if (dateSourceComboBox != null && dateSourceComboBox.getValue() != null) {
+                String dateSource = dateSourceComboBox.getValue();
+                String enumName = dateSource.contains(" ") ? dateSource.substring(0, dateSource.indexOf(" "))
+                        : dateSource;
+                cliCommand.append(" -ds ").append(enumName);
+            }
+
+            if (datePatternComboBox != null && datePatternComboBox.getValue() != null) {
+                String datePattern = datePatternComboBox.getValue();
+                String enumName = datePattern.contains(" ") ? datePattern.substring(0, datePattern.indexOf(" "))
+                        : datePattern;
+                cliCommand.append(" -dp ").append(enumName);
+            }
+
+            if (dateTargetField != null && !dateTargetField.getText().trim().isEmpty()) {
+                cliCommand.append(" -dt \"").append(dateTargetField.getText()).append("\"");
+            }
+
+            if (useMetadataCheckBox != null && useMetadataCheckBox.isSelected()) {
+                cliCommand.append(" -um");
+            }
+        }
+
+        // Duplicate handling options
+        if (renameDuplicatesCheckBox != null && renameDuplicatesCheckBox.isSelected()) {
+            cliCommand.append(" -rd");
+
+            if (duplicatePrefixField != null && !duplicatePrefixField.getText().trim().isEmpty()) {
+                cliCommand.append(" -rp \"").append(duplicatePrefixField.getText()).append("\"");
+            }
+        }
+
+        // Cleanup options
+        if (deleteEmptyFoldersCheckBox != null && deleteEmptyFoldersCheckBox.isSelected()) {
+            cliCommand.append(" -de");
+        }
+
+        // Logging options
+        if (writeLogToFileCheckBox != null && writeLogToFileCheckBox.isSelected()) {
+            cliCommand.append(" -wl");
+
+            if (logDirectoryField != null && !logDirectoryField.getText().trim().isEmpty()) {
+                cliCommand.append(" -ld \"").append(logDirectoryField.getText()).append("\"");
+            }
+        }
+
+        // Add -y flag to skip acceptance prompt
+        cliCommand.append(" -y");
+
+        // Show the command in a dialog
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Command Line Equivalent");
+        alert.setHeaderText("Equivalent CLI Command");
+
+        TextArea textArea = new TextArea(cliCommand.toString());
+        textArea.setEditable(false);
+        textArea.setWrapText(true);
+        textArea.setPrefRowCount(10);
+
+        alert.getDialogPane().setContent(textArea);
+        alert.getDialogPane().setPrefWidth(800);
+
+        // Add copy button
+        ButtonType copyButton = new ButtonType("Copy to Clipboard");
+        ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(copyButton, closeButton);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == copyButton) {
+                javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+                javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+                content.putString(cliCommand.toString());
+                clipboard.setContent(content);
+                appendLog("CLI command copied to clipboard");
+            }
+        });
+    }
+
+    @FXML
     private void onHelp() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Help - SumCompare");

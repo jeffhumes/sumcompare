@@ -302,11 +302,13 @@ public class Main {
       log.info("Date-based folder organization enabled: {}", orgDescription);
     }
 
-    // Step 1: Backup if requested
-    if (propertiesObject.isBackupFirst() == true) {
+    // Step 1: Backup if requested (skip if dry run)
+    if (propertiesObject.isBackupFirst() == true && !propertiesObject.isDryRun()) {
       log.info("Creating backup of source directory...");
       FileUtilsLocal.zipDirectory(propertiesObject);
       log.info("Backup completed");
+    } else if (propertiesObject.isBackupFirst() && propertiesObject.isDryRun()) {
+      log.info("Backup skipped (dry run mode)");
     } else {
       log.warn(
           "Backup first not specified on the command line, we will not backup the source files first!!!");

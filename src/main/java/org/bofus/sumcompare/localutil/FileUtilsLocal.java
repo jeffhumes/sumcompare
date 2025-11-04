@@ -253,8 +253,6 @@ public class FileUtilsLocal {
   public static void zipDirectory(PropertiesObject propertiesObject)
       throws SQLException, PropertyVetoException {
     String tempDir = System.getProperty("java.io.tmpdir");
-    // File backupFileName = new File(tempDir + File.separator +
-    // "Source_Backup.zip");
     String backupFileName = tempDir + File.separator + "Source_Backup.zip";
     log.info(String.format("Backing up to: %s", backupFileName));
     try {

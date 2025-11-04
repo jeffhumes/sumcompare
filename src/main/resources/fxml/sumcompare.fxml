@@ -113,6 +113,7 @@
         <Button fx:id="cancelButton" text="Cancel" onAction="#onCancel" 
                minWidth="100" disable="true"/>
         <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Show CLI Command" onAction="#onShowCliCommand" minWidth="120"/>
         <Button text="View Additional Logging" onAction="#onViewLog" minWidth="90"/>
         <Button text="Help" onAction="#onHelp" minWidth="80"/>
     </HBox>

@@ -32,7 +32,7 @@
             "request": "launch",
             "mainClass": "org.bofus.sumcompare.Main",
             "projectName": "sumcompare",
-            "args": ["-d", "-k", "-z", "XXHASH64", "-s", "/home/jeffhumes/ORIGINAL_VIDEOS/PHONE_DCIM","-t", "/home/jeffhumes/ORIGINAL_VIDEOS/MOTORCYCLES"]
+            "args": ["-s", "/media/jeffhumes/My Book/PICTURES", "-sd", "-t", "/media/jeffhumes/My Book/PICTURES", "-z", "XXHASH64", "-d", "-b", "-p", "-df", "-ds", "MODIFIED", "-dp", "YEAR_MONTH_DAY", "-um", "-y",]
         }
     ]
 }
