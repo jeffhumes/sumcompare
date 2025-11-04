@@ -25,6 +25,7 @@ public class PropertiesObject {
 	private boolean deleteEmptyFolders;
 	private boolean moveInsteadOfCopy;
 	private boolean permanentlyDelete;
+	private int threadCount;
 
 	public String getSourceLocation() {
 		return sourceLocation;
@@ -184,6 +185,14 @@ public class PropertiesObject {
 
 	public void setPermanentlyDelete(boolean permanentlyDelete) {
 		this.permanentlyDelete = permanentlyDelete;
+	}
+
+	public int getThreadCount() {
+		return threadCount;
+	}
+
+	public void setThreadCount(int threadCount) {
+		this.threadCount = threadCount;
 	}
 
 }

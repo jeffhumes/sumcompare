@@ -533,6 +533,15 @@ public class SumCompareController {
             return;
         }
 
+        // Thread count
+        if (threadCountSpinner != null && threadCountSpinner.getValue() != null) {
+            int threadCount = threadCountSpinner.getValue();
+            // Only include if not using default (number of processors)
+            if (threadCount != Runtime.getRuntime().availableProcessors()) {
+                cliCommand.append(" -tc ").append(threadCount);
+            }
+        }
+
         // Optional flags
         if (dryRunCheckBox.isSelected()) {
             cliCommand.append(" -d");

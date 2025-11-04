@@ -129,6 +129,11 @@ public class Main {
         "log-directory",
         true,
         "Directory for log files (default: ~/.sumcompare/logs)");
+    cliOptions.addOption(
+        "tc",
+        "thread-count",
+        true,
+        "Number of threads for parallel processing (default: number of CPU cores)");
     cliOptions.addOption("h", "help", false, "Shows this help screen");
 
     // -------------------------------------------------------------
@@ -285,6 +290,25 @@ public class Main {
         log.info("Log directory set to: {}", logDir);
       }
 
+      if (cmdLine.hasOption("tc")) {
+        try {
+          int threadCount = Integer.parseInt(cmdLine.getOptionValue("tc"));
+          if (threadCount > 0) {
+            propertiesObject.setThreadCount(threadCount);
+            log.info("Thread count set to: {}", threadCount);
+          } else {
+            log.warn("Invalid thread count (must be > 0), using default");
+            propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
+          }
+        } catch (NumberFormatException e) {
+          log.warn("Invalid thread count format, using default");
+          propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
+        }
+      } else {
+        // Default to number of available processors
+        propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
+      }
+
       if (cmdLine.hasOption("h")) {
         showHelp(cliOptions);
       }
@@ -358,101 +382,133 @@ public class Main {
     log.debug(
         "Iterating through the source array, and checking if there is already a matching checksum in the target array");
 
-    // Use parallel stream for concurrent file processing (Java 21 optimized)
-    SourceFileArraySingleton.getInstance().getArray().parallelStream().forEach(thisSourceFileName -> {
-      try {
-        File thisSourceFile = new File(thisSourceFileName);
+    // Use ExecutorService with configurable thread count
+    int threadCount = propertiesObject.getThreadCount();
+    log.info("Using {} threads for parallel processing", threadCount);
+    java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(threadCount);
+    java.util.List<String> sourceFiles = SourceFileArraySingleton.getInstance().getArray();
+    java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(sourceFiles.size());
 
-        // Capture file metadata
-        FileMetadata metadata = FileMetadata.fromFile(thisSourceFile);
+    for (String thisSourceFileName : sourceFiles) {
+      executor.submit(() -> {
+        try {
+          File thisSourceFile = new File(thisSourceFileName);
 
-        // Detect file type
-        String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
+          // Capture file metadata
+          FileMetadata metadata = FileMetadata.fromFile(thisSourceFile);
 
-        // Clone digest for thread-safety
-        MessageDigest threadDigest = (MessageDigest) propertiesObject.getDigestType().clone();
-        String thisSourceChecksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
+          // Detect file type
+          String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
 
-        // Synchronized access to shared collections
-        synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
-          if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisSourceChecksum)) {
-            String existingfile = TargetFileHashMapSingleton.getInstance().getMap().get(thisSourceChecksum);
-            String thisSourceFileNameOnly = FileUtilsLocal.getFileName(thisSourceFileName);
-            String thisTargetFileNameOnly = FileUtilsLocal.getFileName(existingfile);
+          // Clone digest for thread-safety
+          MessageDigest threadDigest = (MessageDigest) propertiesObject.getDigestType().clone();
+          String thisSourceChecksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
 
-            if (thisSourceFileNameOnly.trim().equals(thisTargetFileNameOnly.trim())) {
-              // if this is a dryrun, add to the map, so that we can create an output file of
-              // all files
-              if (propertiesObject.isDryRun() == true) {
+          // Synchronized access to shared collections
+          synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
+            if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisSourceChecksum)) {
+              String existingfile = TargetFileHashMapSingleton.getInstance().getMap().get(thisSourceChecksum);
+              String thisSourceFileNameOnly = FileUtilsLocal.getFileName(thisSourceFileName);
+              String thisTargetFileNameOnly = FileUtilsLocal.getFileName(existingfile);
+
+              if (thisSourceFileNameOnly.trim().equals(thisTargetFileNameOnly.trim())) {
+                // if this is a dryrun, add to the map, so that we can create an output file of
+                // all files
+                if (propertiesObject.isDryRun() == true) {
+                  MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
+                }
+              } else {
+                log.info(
+                    String.format(
+                        "%s [%s] seems to be a copy of file:\r\n%s\r\nMetadata: %s",
+                        thisSourceFileName, fileTypeDesc, existingfile, metadata.getSummary()));
                 MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
               }
+
             } else {
-              log.info(
-                  String.format(
-                      "%s [%s] seems to be a copy of file:\r\n%s\r\nMetadata: %s",
-                      thisSourceFileName, fileTypeDesc, existingfile, metadata.getSummary()));
-              MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
-            }
+              String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
+              String targetFullPath = null;
+              String sourceBasePath = null;
+              File targetFile = null;
 
-          } else {
-            String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
-            String targetFullPath = null;
-            String sourceBasePath = null;
-            File targetFile = null;
-
-            // Use date-based folder organization if enabled
-            if (propertiesObject.isOrganizeDateFolders()) {
-              try {
-                File baseTargetDir = new File(propertiesObject.getTargetLocation());
-                targetFile = DateFolderOrganizer.generateDateBasedTargetPath(
-                    thisSourceFile,
-                    baseTargetDir,
-                    propertiesObject.getDateSource(),
-                    propertiesObject.getDatePattern(),
-                    propertiesObject.isKeepSourceStructure());
-                targetFullPath = targetFile.getAbsolutePath();
-              } catch (Exception e) {
-                log.error("Error generating date-based path for {}, falling back to standard path", thisSourceFileName,
-                    e);
-                // Fallback to standard logic
+              // Use date-based folder organization if enabled
+              if (propertiesObject.isOrganizeDateFolders()) {
+                try {
+                  File baseTargetDir = new File(propertiesObject.getTargetLocation());
+                  targetFile = DateFolderOrganizer.generateDateBasedTargetPath(
+                      thisSourceFile,
+                      baseTargetDir,
+                      propertiesObject.getDateSource(),
+                      propertiesObject.getDatePattern(),
+                      propertiesObject.isKeepSourceStructure());
+                  targetFullPath = targetFile.getAbsolutePath();
+                } catch (Exception e) {
+                  log.error("Error generating date-based path for {}, falling back to standard path",
+                      thisSourceFileName,
+                      e);
+                  // Fallback to standard logic
+                  targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
+                  targetFile = new File(targetFullPath);
+                }
+              } else if (propertiesObject.isKeepSourceStructure() == true) {
+                sourceBasePath = thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
+                String tempPath = FilenameUtils.getPath(sourceBasePath);
+                targetFullPath = propertiesObject.getTargetLocation()
+                    + File.separatorChar
+                    + tempPath
+                    + File.separatorChar
+                    + targetFileName;
+                targetFile = new File(targetFullPath);
+              } else {
                 targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
                 targetFile = new File(targetFullPath);
               }
-            } else if (propertiesObject.isKeepSourceStructure() == true) {
-              sourceBasePath = thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
-              String tempPath = FilenameUtils.getPath(sourceBasePath);
-              targetFullPath = propertiesObject.getTargetLocation()
-                  + File.separatorChar
-                  + tempPath
-                  + File.separatorChar
-                  + targetFileName;
-              targetFile = new File(targetFullPath);
-            } else {
-              targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
-              targetFile = new File(targetFullPath);
-            }
 
-            CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
-            if (propertiesObject.isDryRun() == true) {
-              log.info(
-                  String.format("Would Copy File [%s]: %s to %s (%s)",
-                      fileTypeDesc, thisSourceFileName, targetFullPath, metadata.getSummary()));
-            } else {
-              // Ensure date-based folder exists before copying
-              if (propertiesObject.isOrganizeDateFolders()) {
-                DateFolderOrganizer.ensureDateFolderExists(targetFile);
+              CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
+              if (propertiesObject.isDryRun() == true) {
+                log.info(
+                    String.format("Would Copy File [%s]: %s to %s (%s)",
+                        fileTypeDesc, thisSourceFileName, targetFullPath, metadata.getSummary()));
+              } else {
+                // Ensure date-based folder exists before copying
+                if (propertiesObject.isOrganizeDateFolders()) {
+                  DateFolderOrganizer.ensureDateFolderExists(targetFile);
+                }
+                log.info(
+                    String.format("Copying [%s]: %s (%s)", fileTypeDesc, thisSourceFile.getName(),
+                        metadata.getSummary()));
+                FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
               }
-              log.info(
-                  String.format("Copying [%s]: %s (%s)", fileTypeDesc, thisSourceFile.getName(),
-                      metadata.getSummary()));
-              FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
             }
           }
+        } catch (Exception e) {
+          log.error("Error processing source file: " + thisSourceFileName, e);
+        } finally {
+          latch.countDown();
         }
-      } catch (Exception e) {
-        log.error("Error processing source file: " + thisSourceFileName, e);
+      });
+    }
+
+    // Wait for all tasks to complete
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      log.error("Processing was interrupted", e);
+      Thread.currentThread().interrupt();
+    }
+
+    // Shutdown executor
+    executor.shutdown();
+    try {
+      if (!executor.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
+        executor.shutdownNow();
       }
-    });
+    } catch (InterruptedException e) {
+      executor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+
+    log.info("All source files processed");
 
     // Generate report if requested
     if (propertiesObject.isCreateOutputFile() == true) {
