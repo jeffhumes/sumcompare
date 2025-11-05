@@ -1,1 +1,9 @@
 target
+*.deb
+*.dmg
+*.msi
+*.rpm
+*.pkg
+sumcompare-native
+sumcompare.exe
+

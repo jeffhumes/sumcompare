@@ -91,16 +91,43 @@ java -jar target/sumcompare.jar -b -p -o -z SHA1 \
 
 ## Build
 
+### Standard JAR (requires Java 21 on user's system)
+
 ```bash
 mvn clean package
 ```
 
 This creates `target/sumcompare.jar` with all dependencies bundled.
 
+### Native Executable/Installer (no Java required for users)
+
+Create platform-specific installers with bundled Java runtime:
+
+```bash
+./build-native.sh
+```
+
+This creates:
+
+- **Linux**: `.deb` package
+- **macOS**: `.dmg` installer
+- **Windows**: `.msi` installer
+
+Users can install and run without having Java installed.
+
+See [NATIVE_BUILD.md](NATIVE_BUILD.md) for detailed instructions and options.
+
 ## Requirements
 
+### For Running
+
+- **JAR version**: Java 21 (LTS)
+- **Native version**: No requirements (Java bundled)
+
+### For Building
+
 - Java 21 (LTS)
-- Maven 3.x (for building)
+- Maven 3.x
 
 ## How It Works
 
