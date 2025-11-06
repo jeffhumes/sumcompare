@@ -62,6 +62,11 @@ public class DateFolderOrganizer {
         ACCESSED
     }
 
+    // FIXME: when a file does not have EXIF data, the file modified date should be
+    // used
+    // FIXME: currently, it seems that the current date (today) is being used
+    // instead
+
     /**
      * Generates a date-based folder path for the given file.
      * 

@@ -146,20 +146,30 @@ See [NATIVE_BUILD.md](NATIVE_BUILD.md) for detailed instructions and options.
 
 ## File Type Detection
 
-The tool automatically detects whether files are videos or images:
+The tool uses **Apache Tika** for intelligent, content-based file type detection. Unlike traditional extension-based methods, Tika analyzes the actual file content (magic bytes) to accurately identify file types.
 
-### Supported Video Formats
+### Why Content-Based Detection?
 
-MP4, AVI, MOV, MKV, WMV, FLV, WebM, M4V, MPG, MPEG, 3GP, M2TS, MTS, TS, VOB, OGV, MXF, RM, RMVB, ASF, DivX, F4V, M2V
+- **Accurate identification**: Works even with wrong, missing, or changed file extensions
+- **Thousands of formats**: Detects video, image, audio, documents, archives, and more
+- **Prevents misclassification**: A .jpg renamed to .txt is still correctly identified as an image
+- **Industry standard**: Apache Tika is used by major search engines and content management systems
 
-### Supported Image Formats
+### Supported Formats
 
-JPG, JPEG, PNG, GIF, BMP, TIFF, WebP, SVG, ICO, HEIC, HEIF, RAW, CR2, NEF, ORF, ARW, DNG, PSD, AI, EPS, XCF, EXR, HDR
+Tika automatically detects:
 
-### Detection Methods
+**Video formats**: MP4, AVI, MOV, MKV, WMV, FLV, WebM, MPEG, 3GP, and many more
 
-1. **Extension-based**: Fast detection using file extensions
-2. **MIME type**: Fallback to content-based detection when extension is unclear
+**Image formats**: JPEG, PNG, GIF, BMP, TIFF, WebP, HEIC, RAW formats (CR2, NEF, ORF, ARW, DNG), PSD, and more
+
+**Other formats**: Audio files, documents (PDF, Word, Excel), archives (ZIP, RAR), and 1000+ other types
+
+### How It Works
+
+1. **Magic byte analysis**: Tika reads the file header to identify the actual content type
+2. **MIME type detection**: Returns standard MIME types (e.g., `video/mp4`, `image/jpeg`)
+3. **Smart categorization**: Files are classified as Video, Image, or Other for logging
 
 ### Log Output Enhancement
 
@@ -170,6 +180,8 @@ Would Copy File [Video]: /path/to/video.mp4 to /target/video.mp4
 Would Copy File [Image]: /path/to/photo.jpg to /target/photo.jpg
 Duplicate [Video]: clip.mov -> existing_clip.mov
 ```
+
+Even if extensions are wrong or missing, Tika ensures correct classification.
 
 ## Date-Based Organization
 

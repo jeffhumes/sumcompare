@@ -10,6 +10,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
+import lombok.Data;
+
+@Data
 /**
  * Model class for storing file metadata information.
  * Captures creation time, modification time, size, and other file attributes.
@@ -116,77 +119,4 @@ public class FileMetadata {
                 lastAccessTime, owner, isReadOnly, isHidden);
     }
 
-    // Getters and Setters
-
-    public String getFilePath() {
-        return filePath;
-    }
-
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
-    }
-
-    public long getSizeBytes() {
-        return sizeBytes;
-    }
-
-    public void setSizeBytes(long sizeBytes) {
-        this.sizeBytes = sizeBytes;
-    }
-
-    public String getCreationTime() {
-        return creationTime;
-    }
-
-    public void setCreationTime(String creationTime) {
-        this.creationTime = creationTime;
-    }
-
-    public String getLastModifiedTime() {
-        return lastModifiedTime;
-    }
-
-    public void setLastModifiedTime(String lastModifiedTime) {
-        this.lastModifiedTime = lastModifiedTime;
-    }
-
-    public String getLastAccessTime() {
-        return lastAccessTime;
-    }
-
-    public void setLastAccessTime(String lastAccessTime) {
-        this.lastAccessTime = lastAccessTime;
-    }
-
-    public boolean isReadOnly() {
-        return isReadOnly;
-    }
-
-    public void setReadOnly(boolean readOnly) {
-        isReadOnly = readOnly;
-    }
-
-    public boolean isHidden() {
-        return isHidden;
-    }
-
-    public void setHidden(boolean hidden) {
-        isHidden = hidden;
-    }
-
-    public boolean isDirectory() {
-        return isDirectory;
-    }
-
-    public void setDirectory(boolean directory) {
-        isDirectory = directory;
-    }
-
-    public String getOwner() {
-        return owner;
-    }
-
-    public void setOwner(String owner) {
-        this.owner = owner;
-    }
 }

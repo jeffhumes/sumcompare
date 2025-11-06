@@ -119,15 +119,10 @@
     </HBox>
 
     <!-- Progress Area -->
-    <VBox spacing="5" VBox.vgrow="ALWAYS">
+    <VBox spacing="5">
         <Label text="Progress:" styleClass="label-header"/>
         <ProgressBar fx:id="progressBar" prefWidth="Infinity"/>
         <Label fx:id="statusLabel" text="Ready" styleClass="status-label"/>
-        
-        <!-- Log Output -->
-        <TextArea fx:id="logTextArea" editable="false" wrapText="true" 
-                 VBox.vgrow="ALWAYS" styleClass="log-area"
-                 promptText="Log output will appear here..."/>
     </VBox>
 
     <!-- Statistics -->

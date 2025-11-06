@@ -4,10 +4,16 @@ import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,8 +75,11 @@ public class SumCompareController {
     private ProgressBar progressBar;
     @FXML
     private Label statusLabel;
-    @FXML
+
+    // Log window components (not in FXML - created dynamically)
+    private Stage logWindowStage;
     private TextArea logTextArea;
+
     @FXML
     private Label scannedCountLabel;
     @FXML
@@ -391,7 +400,9 @@ public class SumCompareController {
         // Clear previous run data
         clearSingletons();
         resetStatistics();
-        logTextArea.clear();
+
+        // Open log window
+        openLogWindow();
 
         // Start the comparison task
         startComparisonTask();
@@ -482,7 +493,8 @@ public class SumCompareController {
             java.util.Arrays.sort(logFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
             File logFile = logFiles[0];
 
-            // Clear current output and show log content
+            // Open log window and show log content
+            openLogWindow();
             logTextArea.clear();
             appendLog("=== Application Log ===\n");
             appendLog("Location: " + logFile.getAbsolutePath() + "\n");
@@ -490,16 +502,68 @@ public class SumCompareController {
                     .format(new java.util.Date(logFile.lastModified())) + "\n\n");
 
             java.nio.file.Files.lines(logFile.toPath())
-                    .forEach(line -> logTextArea.appendText(line + "\n"));
+                    .forEach(line -> {
+                        if (logTextArea != null) {
+                            Platform.runLater(() -> logTextArea.appendText(line + "\n"));
+                        }
+                    });
 
             // Scroll to bottom
-            logTextArea.setScrollTop(Double.MAX_VALUE);
+            if (logTextArea != null) {
+                Platform.runLater(() -> logTextArea.setScrollTop(Double.MAX_VALUE));
+            }
 
             log.info("Log displayed in current output window");
         } catch (IOException e) {
             log.error("Failed to read log file", e);
             showError("Failed to read log file: " + e.getMessage());
         }
+    }
+
+    private void openLogWindow() {
+        // If window already exists, just clear it and bring to front
+        if (logWindowStage != null && logWindowStage.isShowing()) {
+            logTextArea.clear();
+            logWindowStage.toFront();
+            return;
+        }
+
+        // Create log window
+        logWindowStage = new Stage();
+        logWindowStage.setTitle("SumCompare - Processing Log");
+
+        // Create text area for log
+        logTextArea = new TextArea();
+        logTextArea.setEditable(false);
+        logTextArea.setWrapText(true);
+        logTextArea.setStyle("-fx-font-family: 'Courier New', monospace; -fx-font-size: 12px;");
+
+        // Create layout
+        VBox vbox = new VBox(10);
+        vbox.setPadding(new Insets(10));
+        vbox.getChildren().add(logTextArea);
+        VBox.setVgrow(logTextArea, Priority.ALWAYS);
+
+        // Add close button
+        Button closeButton = new Button("Close");
+        closeButton.setOnAction(e -> logWindowStage.close());
+        HBox buttonBox = new HBox(closeButton);
+        buttonBox.setAlignment(Pos.CENTER);
+        vbox.getChildren().add(buttonBox);
+
+        // Create scene and show
+        Scene scene = new Scene(vbox, 800, 600);
+        logWindowStage.setScene(scene);
+
+        // Don't close main window when log window closes
+        logWindowStage.initModality(Modality.NONE);
+
+        logWindowStage.show();
+
+        appendLog("=== SumCompare Processing Log ===");
+        appendLog("Started at: " + java.time.LocalDateTime.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        appendLog("");
     }
 
     @FXML
@@ -795,23 +859,28 @@ public class SumCompareController {
                     // Step 2 & 4: Scan target and source directories in parallel
                     updateMessage("Scanning directories in parallel...");
 
-                    Thread targetScanThread = new Thread(() -> {
-                        try {
-                            FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
-                            int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
-                            updateMessage("Found " + targetCount + " files in target");
+                    Thread targetScanThread = null;
+                    if (props.isSourceDuplicateCheckOnly()) {
+                        updateMessage("Source duplicate check mode: Target directory scan skipped");
+                    } else {
+                        targetScanThread = new Thread(() -> {
+                            try {
+                                FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
+                                int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
+                                updateMessage("Found " + targetCount + " files in target");
 
-                            // Step 3: Compute target checksums
-                            updateMessage("Computing target checksums...");
-                            FileUtilsLocal.createTargetFileChecksumMap(
-                                    TargetFileArraySingleton.getInstance(),
-                                    props.getDigestType());
-                            updateMessage("Target checksums completed");
-                        } catch (Exception e) {
-                            log.error("Error scanning target directory", e);
-                            updateMessage("ERROR scanning target: " + e.getMessage());
-                        }
-                    });
+                                // Step 3: Compute target checksums
+                                updateMessage("Computing target checksums...");
+                                FileUtilsLocal.createTargetFileChecksumMap(
+                                        TargetFileArraySingleton.getInstance(),
+                                        props.getDigestType());
+                                updateMessage("Target checksums completed");
+                            } catch (Exception e) {
+                                log.error("Error scanning target directory", e);
+                                updateMessage("ERROR scanning target: " + e.getMessage());
+                            }
+                        });
+                    }
 
                     Thread sourceScanThread = new Thread(() -> {
                         try {
@@ -826,11 +895,17 @@ public class SumCompareController {
                     });
 
                     // Start both threads
-                    targetScanThread.start();
+                    if (!props.isSourceDuplicateCheckOnly()) {
+                        targetScanThread.start();
+                    }
+
                     sourceScanThread.start();
 
                     // Wait for both to complete
-                    targetScanThread.join();
+                    if (!props.isSourceDuplicateCheckOnly()) {
+                        targetScanThread.join();
+                    }
+
                     sourceScanThread.join();
 
                     updateMessage("Directory scanning completed");
@@ -1321,7 +1396,9 @@ public class SumCompareController {
 
     private void appendLog(String message) {
         Platform.runLater(() -> {
-            logTextArea.appendText(message + "\n");
+            if (logTextArea != null) {
+                logTextArea.appendText(message + "\n");
+            }
         });
 
         // Also log to file if file logging is enabled

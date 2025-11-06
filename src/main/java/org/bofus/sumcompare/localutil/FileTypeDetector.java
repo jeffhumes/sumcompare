@@ -2,32 +2,21 @@ package org.bofus.sumcompare.localutil;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+
+import org.apache.tika.Tika;
 
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Utility class for detecting file types, specifically identifying video and
- * image files.
+ * Utility class for detecting file types using Apache Tika.
+ * Provides content-based file type detection rather than relying solely on file
+ * extensions.
  */
 @Slf4j
 public class FileTypeDetector {
 
-    // Common video file extensions
-    private static final Set<String> VIDEO_EXTENSIONS = new HashSet<>(Arrays.asList(
-            "mp4", "avi", "mov", "mkv", "wmv", "flv", "webm", "m4v",
-            "mpg", "mpeg", "3gp", "3g2", "m2ts", "mts", "ts", "vob",
-            "ogv", "mxf", "rm", "rmvb", "asf", "divx", "f4v", "m2v"));
-
-    // Common image file extensions
-    private static final Set<String> IMAGE_EXTENSIONS = new HashSet<>(Arrays.asList(
-            "jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif", "webp",
-            "svg", "ico", "heic", "heif", "raw", "cr2", "nef", "orf",
-            "arw", "dng", "psd", "ai", "eps", "xcf", "exr", "hdr"));
+    // Thread-safe singleton Tika instance
+    private static final Tika TIKA = new Tika();
 
     /**
      * File type enumeration
@@ -39,7 +28,9 @@ public class FileTypeDetector {
     }
 
     /**
-     * Detects the type of a file based on its extension and optionally MIME type.
+     * Detects the type of a file using Apache Tika's content-based detection.
+     * This method reads the actual file content to determine the type, rather than
+     * relying solely on file extensions.
      * 
      * @param file The file to detect
      * @return FileType enum indicating VIDEO, IMAGE, or OTHER
@@ -49,35 +40,20 @@ public class FileTypeDetector {
             return FileType.OTHER;
         }
 
-        String fileName = file.getName().toLowerCase();
-        String extension = getFileExtension(fileName);
-
-        // Check by extension first (fastest)
-        if (VIDEO_EXTENSIONS.contains(extension)) {
-            log.trace("File {} detected as VIDEO by extension", file.getName());
-            return FileType.VIDEO;
-        }
-
-        if (IMAGE_EXTENSIONS.contains(extension)) {
-            log.trace("File {} detected as IMAGE by extension", file.getName());
-            return FileType.IMAGE;
-        }
-
-        // Optionally check MIME type for more accurate detection
         try {
             String mimeType = detectMimeType(file);
             if (mimeType != null) {
                 if (mimeType.startsWith("video/")) {
-                    log.trace("File {} detected as VIDEO by MIME type: {}", file.getName(), mimeType);
+                    log.trace("File {} detected as VIDEO by Tika: {}", file.getName(), mimeType);
                     return FileType.VIDEO;
                 }
                 if (mimeType.startsWith("image/")) {
-                    log.trace("File {} detected as IMAGE by MIME type: {}", file.getName(), mimeType);
+                    log.trace("File {} detected as IMAGE by Tika: {}", file.getName(), mimeType);
                     return FileType.IMAGE;
                 }
             }
         } catch (IOException e) {
-            log.error("Could not detect MIME type for {}: {}", file.getName(), e.getMessage());
+            log.warn("Could not detect MIME type for {}: {}, falling back to OTHER", file.getName(), e.getMessage());
         }
 
         return FileType.OTHER;
@@ -99,15 +75,17 @@ public class FileTypeDetector {
     }
 
     /**
-     * Detects the MIME type of a file using Java NIO.
+     * Detects the MIME type of a file using Apache Tika's content analysis.
+     * Tika reads the file's actual content (magic bytes) to determine the type,
+     * providing more accurate detection than extension-based methods.
      * 
      * @param file The file to check
      * @return The MIME type string, or null if it cannot be determined
      * @throws IOException if an I/O error occurs
      */
     private static String detectMimeType(File file) throws IOException {
-        Path path = file.toPath();
-        return Files.probeContentType(path);
+        // Tika.detect() reads the file content to determine the MIME type
+        return TIKA.detect(file);
     }
 
     /**
@@ -170,7 +148,6 @@ public class FileTypeDetector {
             return "File does not exist";
         }
 
-        FileType type = detectFileType(file);
         String extension = getFileExtension(file.getName().toLowerCase());
 
         StringBuilder info = new StringBuilder();

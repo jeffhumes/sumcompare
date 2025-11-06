@@ -50,6 +50,30 @@
           <mainClass>org.bofus.sumcompare.gui.SumCompareGUI</mainClass>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.panteleyev</groupId>
+        <artifactId>jpackage-maven-plugin</artifactId>
+        <version>1.6.5</version>
+        <configuration>
+          <name>SumCompare</name>
+          <appVersion>0.0.1</appVersion>
+          <vendor>org.bofus</vendor>
+          <destination>target/dist</destination>
+          <module>sumcompare/org.bofus.sumcompare.gui.SumCompareGUI</module>
+          <runtimeImage>target/java-runtime</runtimeImage>
+          <javaOptions>
+            <option>-Dfile.encoding=UTF-8</option>
+          </javaOptions>
+          <linuxShortcut>true</linuxShortcut>
+          <linuxMenuGroup>Utility</linuxMenuGroup>
+          <linuxAppCategory>Utility</linuxAppCategory>
+          <winDirChooser>true</winDirChooser>
+          <winShortcut>true</winShortcut>
+          <winMenu>true</winMenu>
+          <winMenuGroup>SumCompare</winMenuGroup>
+          <macPackageName>SumCompare</macPackageName>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
   <properties>

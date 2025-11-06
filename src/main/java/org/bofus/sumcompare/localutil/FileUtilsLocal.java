@@ -258,8 +258,6 @@ public class FileUtilsLocal {
     try {
       populateBackupFilesList(propertiesObject);
 
-      // now zip files one by one
-      // create ZipOutputStream to write to the zip file
       FileOutputStream fos = new FileOutputStream(backupFileName);
       ZipOutputStream zos = new ZipOutputStream(fos);
       // Increase buffer size from 1KB to 64KB for faster zip operations
