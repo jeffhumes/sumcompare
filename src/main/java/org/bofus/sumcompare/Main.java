@@ -11,7 +11,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.bofus.sumcompare.localutil.DateFolderOrganizer;
-import org.bofus.sumcompare.localutil.FileTypeDetector;
+import org.bofus.sumcompare.localutil.FileMetadataExtractor;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
 import org.bofus.sumcompare.localutil.UserUtilities;
@@ -29,513 +29,571 @@ import lombok.extern.slf4j.Slf4j;
 public class Main {
 
   public static void main(String[] args) throws Exception {
-    PropertiesObject propertiesObject = new PropertiesObject();
+    // CLI functionality has been disabled - use the GUI instead
+    log.info("CLI mode is currently disabled. Please use the GUI to run sumcompare.");
+    System.out.println("CLI mode is currently disabled. Please use the GUI to run sumcompare.");
+    System.exit(0);
 
-    // -------------------------------------------------------------
-    // Set command line options
-    // -------------------------------------------------------------
-    CommandLineParser parser = new DefaultParser();
-    Options cliOptions = new Options();
-    cliOptions.addOption(
-        "b",
-        "backup-source-first",
-        false,
-        "Backup (zip file) the source directory before taking any other action (default: false)");
-    cliOptions.addOption("d", "dry-run", false, "Run the process (default: false)");
-    cliOptions.addOption(
-        "k",
-        "keep-source-structure",
-        false,
-        "Keep the source directory structure when copying to target (default: false)");
-    cliOptions.addOption("o", "create-output-file", false, "Create an output (excel) file");
-    cliOptions.addOption(
-        "p", "preserve-file-date", false, "Preserve the file date on copy (Default: false)");
-    cliOptions.addOption(
-        "r", "post-remove", false, "Remove source file after copy to destination (Default: false)");
-    cliOptions.addOption("s", "source", true, "Specifies the source location	<REQUIRED>");
-    cliOptions.addOption("t", "target", true, "Specifies the target location		<REQUIRED>");
-    cliOptions.addOption(
-        "y",
-        "i-agree",
-        false,
-        "Agree to the fact that there is not warranty, or guarantee, and hold noone responsible for the results of this application");
-    cliOptions.addOption(
-        "z",
-        "chksumtype",
-        true,
-        "The type of checksum data to use for comparison (SHA1, MD5, XXHASH32, XXHASH64)	<REQUIRED>");
-    cliOptions.addOption(
-        "df",
-        "date-folders",
-        false,
-        "Organize files into date-based folders (default: false)");
-    cliOptions.addOption(
-        "ds",
-        "date-source",
-        true,
-        "Date source for folder organization: CREATED, MODIFIED, ACCESSED (default: MODIFIED)");
-    cliOptions.addOption(
-        "dp",
-        "date-pattern",
-        true,
-        "Date folder pattern: YEAR_MONTH, YEAR_MONTH_SLASH, YEAR_MONTH_DAY, YEAR_MONTH_DAY_SLASH, YEAR_ONLY, YEAR_QUARTER (default: YEAR_MONTH)");
-    cliOptions.addOption(
-        "dt",
-        "date-target",
-        true,
-        "Custom target directory for date-based organization (default: source directory)");
-    cliOptions.addOption(
-        "um",
-        "use-metadata",
-        false,
-        "Use image/video metadata dates (EXIF) when available (default: false)");
-    cliOptions.addOption(
-        "sd",
-        "source-duplicates",
-        false,
-        "Check for duplicates in source only, no copying (default: false)");
-    cliOptions.addOption(
-        "rd",
-        "rename-duplicates",
-        false,
-        "Rename duplicate source files instead of skipping (default: false)");
-    cliOptions.addOption(
-        "rp",
-        "rename-prefix",
-        true,
-        "Prefix for renamed duplicate files (default: DUPLICATE_FILE_)");
-    cliOptions.addOption(
-        "de",
-        "delete-empty",
-        false,
-        "Delete empty folders in source after completion (default: false)");
-    cliOptions.addOption(
-        "m",
-        "move-files",
-        false,
-        "Move files instead of copying (deletes source after copy) (default: false)");
-    cliOptions.addOption(
-        "pd",
-        "permanent-delete",
-        false,
-        "Permanently delete moved files instead of moving to trash (default: false, requires -m)");
-    cliOptions.addOption(
-        "wl",
-        "write-log",
-        false,
-        "Write detailed log to file (default: false)");
-    cliOptions.addOption(
-        "ld",
-        "log-directory",
-        true,
-        "Directory for log files (default: ~/.sumcompare/logs)");
-    cliOptions.addOption(
-        "tc",
-        "thread-count",
-        true,
-        "Number of threads for parallel processing (default: number of CPU cores)");
-    cliOptions.addOption("h", "help", false, "Shows this help screen");
-
-    // -------------------------------------------------------------
-    // Check command line options
-    // -------------------------------------------------------------
-    try {
-      CommandLine cmdLine;
-      cmdLine = parser.parse(cliOptions, args);
-
-      if (cmdLine.hasOption("b")) {
-        propertiesObject.setBackupFirst(true);
-      } else {
-        propertiesObject.setBackupFirst(false);
-      }
-
-      if (cmdLine.hasOption("d")) {
-        propertiesObject.setDryRun(true);
-      } else {
-        propertiesObject.setDryRun(false);
-      }
-
-      if (cmdLine.hasOption("s")) {
-        // sourceLocation = cmdLine.getOptionValue("s");
-        propertiesObject.setSourceLocation(cmdLine.getOptionValue("s"));
-        log.debug(
-            String.format(
-                "Setting Source Location from Command Line Argument: %s",
-                propertiesObject.getSourceLocation()));
-        FileUtilsLocal.checkDirectoryExists(propertiesObject.getSourceLocation());
-      } else {
-        showHelp(cliOptions);
-      }
-
-      if (cmdLine.hasOption("t")) {
-        propertiesObject.setTargetLocation(cmdLine.getOptionValue("t"));
-        log.debug(
-            String.format(
-                "Setting Target Location from Command Line Argument: %s",
-                cmdLine.getOptionValue("t")));
-        FileUtilsLocal.checkDirectoryExists(cmdLine.getOptionValue("t"));
-      } else {
-        showHelp(cliOptions);
-      }
-
-      if (cmdLine.hasOption("o")) {
-        propertiesObject.setCreateOutputFile(true);
-      }
-
-      if (cmdLine.hasOption("p")) {
-        propertiesObject.setPreserveFileDate(true);
-      }
-
-      if (cmdLine.hasOption("r")) {
-        propertiesObject.setPostCopyRemove(true);
-      }
-
-      if (cmdLine.hasOption("z")) {
-        propertiesObject.setDigestType(FileUtilsLocal.SetDigestType(cmdLine.getOptionValue("z")));
-      } else {
-        showHelp(cliOptions);
-      }
-
-      if (cmdLine.hasOption("y")) {
-        log.info("User has accepted the terms via the command line option '-y'");
-      } else {
-        boolean userAccepts = UserUtilities.getUserAcceptance();
-        if (userAccepts = true) {
-          log.info("User has accepted the agreement, beginning processing...");
-        }
-      }
-
-      if (cmdLine.hasOption("k")) {
-        propertiesObject.setKeepSourceStructure(true);
-      } else {
-        propertiesObject.setKeepSourceStructure(false);
-      }
-
-      if (cmdLine.hasOption("df")) {
-        propertiesObject.setOrganizeDateFolders(true);
-      } else {
-        propertiesObject.setOrganizeDateFolders(false);
-      }
-
-      if (cmdLine.hasOption("ds")) {
-        String dateSourceStr = cmdLine.getOptionValue("ds").toUpperCase();
-        try {
-          propertiesObject
-              .setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.valueOf(dateSourceStr));
-        } catch (IllegalArgumentException e) {
-          log.error("Invalid date source: {}. Using MODIFIED as default.", dateSourceStr);
-          propertiesObject.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
-        }
-      } else {
-        propertiesObject.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
-      }
-
-      if (cmdLine.hasOption("dp")) {
-        String datePatternStr = cmdLine.getOptionValue("dp").toUpperCase();
-        try {
-          propertiesObject
-              .setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.valueOf(datePatternStr));
-        } catch (IllegalArgumentException e) {
-          log.error("Invalid date pattern: {}. Using YEAR_MONTH as default.", datePatternStr);
-          propertiesObject.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
-        }
-      } else {
-        propertiesObject.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
-      }
-
-      if (cmdLine.hasOption("dt")) {
-        propertiesObject.setDateTargetDirectory(cmdLine.getOptionValue("dt"));
-        log.debug("Setting date target directory: {}", cmdLine.getOptionValue("dt"));
-      }
-
-      if (cmdLine.hasOption("um")) {
-        propertiesObject.setUseMetadata(true);
-      }
-
-      if (cmdLine.hasOption("sd")) {
-        propertiesObject.setSourceDuplicateCheckOnly(true);
-      }
-
-      if (cmdLine.hasOption("rd")) {
-        propertiesObject.setRenameDuplicates(true);
-      }
-
-      if (cmdLine.hasOption("rp")) {
-        propertiesObject.setDuplicatePrefix(cmdLine.getOptionValue("rp"));
-      } else {
-        propertiesObject.setDuplicatePrefix("DUPLICATE_FILE_");
-      }
-
-      if (cmdLine.hasOption("de")) {
-        propertiesObject.setDeleteEmptyFolders(true);
-      }
-
-      if (cmdLine.hasOption("m")) {
-        propertiesObject.setMoveInsteadOfCopy(true);
-      }
-
-      if (cmdLine.hasOption("pd")) {
-        propertiesObject.setPermanentlyDelete(true);
-      }
-
-      if (cmdLine.hasOption("wl")) {
-        // Enable file logging - this would need to be implemented
-        // For now just log that it was requested
-        log.info("File logging enabled via command line");
-      }
-
-      if (cmdLine.hasOption("ld")) {
-        // Set log directory - this would need to be implemented
-        String logDir = cmdLine.getOptionValue("ld");
-        log.info("Log directory set to: {}", logDir);
-      }
-
-      if (cmdLine.hasOption("tc")) {
-        try {
-          int threadCount = Integer.parseInt(cmdLine.getOptionValue("tc"));
-          if (threadCount > 0) {
-            propertiesObject.setThreadCount(threadCount);
-            log.info("Thread count set to: {}", threadCount);
-          } else {
-            log.warn("Invalid thread count (must be > 0), using default");
-            propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
-          }
-        } catch (NumberFormatException e) {
-          log.warn("Invalid thread count format, using default");
-          propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
-        }
-      } else {
-        // Default to number of available processors
-        propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
-      }
-
-      if (cmdLine.hasOption("h")) {
-        showHelp(cliOptions);
-      }
-
-    } catch (Exception e) {
-      log.error(e.toString());
-      throw e;
-    }
-
-    // Log date-based organization settings if enabled
-    if (propertiesObject.isOrganizeDateFolders()) {
-      String orgDescription = DateFolderOrganizer.getOrganizationDescription(
-          propertiesObject.getDateSource(),
-          propertiesObject.getDatePattern());
-      log.info("Date-based folder organization enabled: {}", orgDescription);
-    }
-
-    // Step 1: Backup if requested (skip if dry run)
-    if (propertiesObject.isBackupFirst() == true && !propertiesObject.isDryRun()) {
-      log.info("Creating backup of source directory...");
-      FileUtilsLocal.zipDirectory(propertiesObject);
-      log.info("Backup completed");
-    } else if (propertiesObject.isBackupFirst() && propertiesObject.isDryRun()) {
-      log.info("Backup skipped (dry run mode)");
-    } else {
-      log.warn(
-          "Backup first not specified on the command line, we will not backup the source files first!!!");
-    }
-
-    // Step 2 & 4: Scan target and source directories in parallel
-    log.info("Scanning directories in parallel...");
-
-    Thread targetScanThread = new Thread(() -> {
-      try {
-        FileUtilsLocal.getTargetDirectoryContentsArray(propertiesObject.getTargetLocation());
-        int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
-        log.info("Found " + targetCount + " files in target");
-
-        // Step 3: Compute target checksums
-        log.info("Computing target checksums...");
-        FileUtilsLocal.createTargetFileChecksumMap(
-            TargetFileArraySingleton.getInstance(),
-            propertiesObject.getDigestType());
-        log.info("Target checksums completed");
-      } catch (Exception e) {
-        log.error("Error scanning target directory", e);
-      }
-    });
-
-    Thread sourceScanThread = new Thread(() -> {
-      try {
-        FileUtilsLocal.getSourceDirectoryContentsArray(propertiesObject.getSourceLocation());
-        int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
-        log.info("Found " + sourceCount + " files in source");
-      } catch (Exception e) {
-        log.error("Error scanning source directory", e);
-      }
-    });
-
-    // Start both threads
-    targetScanThread.start();
-    sourceScanThread.start();
-
-    // Wait for both to complete
-    targetScanThread.join();
-    sourceScanThread.join();
-
-    log.info("Directory scanning completed");
-
-    log.info("Processing source files...");
-    log.debug(
-        "Iterating through the source array, and checking if there is already a matching checksum in the target array");
-
-    // Use ExecutorService with configurable thread count
-    int threadCount = propertiesObject.getThreadCount();
-    log.info("Using {} threads for parallel processing", threadCount);
-    java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(threadCount);
-    java.util.List<String> sourceFiles = SourceFileArraySingleton.getInstance().getArray();
-    java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(sourceFiles.size());
-
-    for (String thisSourceFileName : sourceFiles) {
-      executor.submit(() -> {
-        try {
-          File thisSourceFile = new File(thisSourceFileName);
-
-          // Capture file metadata
-          FileMetadata metadata = FileMetadata.fromFile(thisSourceFile);
-
-          // Detect file type
-          String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
-
-          // Clone digest for thread-safety
-          MessageDigest threadDigest = (MessageDigest) propertiesObject.getDigestType().clone();
-          String thisSourceChecksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
-
-          // Synchronized access to shared collections
-          synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
-            if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisSourceChecksum)) {
-              String existingfile = TargetFileHashMapSingleton.getInstance().getMap().get(thisSourceChecksum);
-              String thisSourceFileNameOnly = FileUtilsLocal.getFileName(thisSourceFileName);
-              String thisTargetFileNameOnly = FileUtilsLocal.getFileName(existingfile);
-
-              if (thisSourceFileNameOnly.trim().equals(thisTargetFileNameOnly.trim())) {
-                // if this is a dryrun, add to the map, so that we can create an output file of
-                // all files
-                if (propertiesObject.isDryRun() == true) {
-                  MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
-                }
-              } else {
-                log.info(
-                    String.format(
-                        "%s [%s] seems to be a copy of file:\r\n%s\r\nMetadata: %s",
-                        thisSourceFileName, fileTypeDesc, existingfile, metadata.getSummary()));
-                MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName, existingfile);
-              }
-
-            } else {
-              String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
-              String targetFullPath = null;
-              String sourceBasePath = null;
-              File targetFile = null;
-
-              // Use date-based folder organization if enabled
-              if (propertiesObject.isOrganizeDateFolders()) {
-                try {
-                  File baseTargetDir = new File(propertiesObject.getTargetLocation());
-                  targetFile = DateFolderOrganizer.generateDateBasedTargetPath(
-                      thisSourceFile,
-                      baseTargetDir,
-                      propertiesObject.getDateSource(),
-                      propertiesObject.getDatePattern(),
-                      propertiesObject.isKeepSourceStructure());
-                  targetFullPath = targetFile.getAbsolutePath();
-                } catch (Exception e) {
-                  log.error("Error generating date-based path for {}, falling back to standard path",
-                      thisSourceFileName,
-                      e);
-                  // Fallback to standard logic
-                  targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
-                  targetFile = new File(targetFullPath);
-                }
-              } else if (propertiesObject.isKeepSourceStructure() == true) {
-                sourceBasePath = thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
-                String tempPath = FilenameUtils.getPath(sourceBasePath);
-                targetFullPath = propertiesObject.getTargetLocation()
-                    + File.separatorChar
-                    + tempPath
-                    + File.separatorChar
-                    + targetFileName;
-                targetFile = new File(targetFullPath);
-              } else {
-                targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar + targetFileName;
-                targetFile = new File(targetFullPath);
-              }
-
-              CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName, targetFullPath);
-              if (propertiesObject.isDryRun() == true) {
-                log.info(
-                    String.format("Would Copy File [%s]: %s to %s (%s)",
-                        fileTypeDesc, thisSourceFileName, targetFullPath, metadata.getSummary()));
-              } else {
-                // Ensure date-based folder exists before copying
-                if (propertiesObject.isOrganizeDateFolders()) {
-                  DateFolderOrganizer.ensureDateFolderExists(targetFile);
-                }
-                log.info(
-                    String.format("Copying [%s]: %s (%s)", fileTypeDesc, thisSourceFile.getName(),
-                        metadata.getSummary()));
-                FileUtils.copyFile(thisSourceFile, targetFile, propertiesObject.isPreserveFileDate());
-              }
-            }
-          }
-        } catch (Exception e) {
-          log.error("Error processing source file: " + thisSourceFileName, e);
-        } finally {
-          latch.countDown();
-        }
-      });
-    }
-
-    // Wait for all tasks to complete
-    try {
-      latch.await();
-    } catch (InterruptedException e) {
-      log.error("Processing was interrupted", e);
-      Thread.currentThread().interrupt();
-    }
-
-    // Shutdown executor
-    executor.shutdown();
-    try {
-      if (!executor.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
-        executor.shutdownNow();
-      }
-    } catch (InterruptedException e) {
-      executor.shutdownNow();
-      Thread.currentThread().interrupt();
-    }
-
-    log.info("All source files processed");
-
-    // Generate report if requested
-    if (propertiesObject.isCreateOutputFile() == true) {
-      log.info("Generating Excel report...");
-      ReportUtils.createOutputExcel();
-      log.info("Report created: Copy_Output.xlsx");
-    }
-
-    // Update final statistics
-    int copied = CopiedFileHashMapSingleton.getInstance().getMap().size();
-    int duplicates = MatchingFileHashMapSingleton.getInstance().getMap().size();
-
-    log.info("================================================");
-    log.info("           COMPLETED SUCCESSFULLY               ");
-    log.info("================================================");
-    log.info(String.format("Files copied: %d", copied));
-    log.info(String.format("Duplicates found: %d", duplicates));
-    log.info("================================================");
+    /*
+     * PropertiesObject propertiesObject = new PropertiesObject();
+     * 
+     * // -------------------------------------------------------------
+     * // Set command line options
+     * // -------------------------------------------------------------
+     * CommandLineParser parser = new DefaultParser();
+     * Options cliOptions = new Options();
+     * cliOptions.addOption(
+     * "b",
+     * "backup-source-first",
+     * false,
+     * "Backup (zip file) the source directory before taking any other action (default: false)"
+     * );
+     * cliOptions.addOption("d", "dry-run", false,
+     * "Run the process (default: false)");
+     * cliOptions.addOption(
+     * "k",
+     * "keep-source-structure",
+     * false,
+     * "Keep the source directory structure when copying to target (default: false)"
+     * );
+     * cliOptions.addOption("o", "create-output-file", false,
+     * "Create an output (excel) file");
+     * cliOptions.addOption(
+     * "p", "preserve-file-date", false,
+     * "Preserve the file date on copy (Default: false)");
+     * cliOptions.addOption(
+     * "r", "post-remove", false,
+     * "Remove source file after copy to destination (Default: false)");
+     * cliOptions.addOption("s", "source", true,
+     * "Specifies the source location	<REQUIRED>");
+     * cliOptions.addOption("t", "target", true,
+     * "Specifies the target location		<REQUIRED>");
+     * cliOptions.addOption(
+     * "y",
+     * "i-agree",
+     * false,
+     * "Agree to the fact that there is not warranty, or guarantee, and hold noone responsible for the results of this application"
+     * );
+     * cliOptions.addOption(
+     * "z",
+     * "chksumtype",
+     * true,
+     * "The type of checksum data to use for comparison (SHA1, MD5, XXHASH32, XXHASH64)	<REQUIRED>"
+     * );
+     * cliOptions.addOption(
+     * "df",
+     * "date-folders",
+     * false,
+     * "Organize files into date-based folders (default: false)");
+     * cliOptions.addOption(
+     * "ds",
+     * "date-source",
+     * true,
+     * "Date source for folder organization: CREATED, MODIFIED, ACCESSED (default: MODIFIED)"
+     * );
+     * cliOptions.addOption(
+     * "dp",
+     * "date-pattern",
+     * true,
+     * "Date folder pattern: YEAR_MONTH, YEAR_MONTH_SLASH, YEAR_MONTH_DAY, YEAR_MONTH_DAY_SLASH, YEAR_ONLY, YEAR_QUARTER (default: YEAR_MONTH)"
+     * );
+     * cliOptions.addOption(
+     * "dt",
+     * "date-target",
+     * true,
+     * "Custom target directory for date-based organization (default: source directory)"
+     * );
+     * cliOptions.addOption(
+     * "um",
+     * "use-metadata",
+     * false,
+     * "Use image/video metadata dates (EXIF) when available (default: false)");
+     * cliOptions.addOption(
+     * "sd",
+     * "source-duplicates",
+     * false,
+     * "Check for duplicates in source only, no copying (default: false)");
+     * cliOptions.addOption(
+     * "rd",
+     * "rename-duplicates",
+     * false,
+     * "Rename duplicate source files instead of skipping (default: false)");
+     * cliOptions.addOption(
+     * "rp",
+     * "rename-prefix",
+     * true,
+     * "Prefix for renamed duplicate files (default: DUPLICATE_FILE_)");
+     * cliOptions.addOption(
+     * "de",
+     * "delete-empty",
+     * false,
+     * "Delete empty folders in source after completion (default: false)");
+     * cliOptions.addOption(
+     * "m",
+     * "move-files",
+     * false,
+     * "Move files instead of copying (deletes source after copy) (default: false)"
+     * );
+     * cliOptions.addOption(
+     * "pd",
+     * "permanent-delete",
+     * false,
+     * "Permanently delete moved files instead of moving to trash (default: false, requires -m)"
+     * );
+     * cliOptions.addOption(
+     * "wl",
+     * "write-log",
+     * false,
+     * "Write detailed log to file (default: false)");
+     * cliOptions.addOption(
+     * "ld",
+     * "log-directory",
+     * true,
+     * "Directory for log files (default: ~/.sumcompare/logs)");
+     * cliOptions.addOption(
+     * "tc",
+     * "thread-count",
+     * true,
+     * "Number of threads for parallel processing (default: number of CPU cores)");
+     * cliOptions.addOption("h", "help", false, "Shows this help screen");
+     * 
+     * // -------------------------------------------------------------
+     * // Check command line options
+     * // -------------------------------------------------------------
+     * try {
+     * CommandLine cmdLine;
+     * cmdLine = parser.parse(cliOptions, args);
+     * 
+     * if (cmdLine.hasOption("b")) {
+     * propertiesObject.setBackupFirst(true);
+     * } else {
+     * propertiesObject.setBackupFirst(false);
+     * }
+     * 
+     * if (cmdLine.hasOption("d")) {
+     * propertiesObject.setDryRun(true);
+     * } else {
+     * propertiesObject.setDryRun(false);
+     * }
+     * 
+     * if (cmdLine.hasOption("s")) {
+     * // sourceLocation = cmdLine.getOptionValue("s");
+     * propertiesObject.setSourceLocation(cmdLine.getOptionValue("s"));
+     * log.debug(
+     * String.format(
+     * "Setting Source Location from Command Line Argument: %s",
+     * propertiesObject.getSourceLocation()));
+     * FileUtilsLocal.checkDirectoryExists(propertiesObject.getSourceLocation());
+     * } else {
+     * showHelp(cliOptions);
+     * }
+     * 
+     * if (cmdLine.hasOption("t")) {
+     * propertiesObject.setTargetLocation(cmdLine.getOptionValue("t"));
+     * log.debug(
+     * String.format(
+     * "Setting Target Location from Command Line Argument: %s",
+     * cmdLine.getOptionValue("t")));
+     * FileUtilsLocal.checkDirectoryExists(cmdLine.getOptionValue("t"));
+     * } else {
+     * showHelp(cliOptions);
+     * }
+     * 
+     * if (cmdLine.hasOption("o")) {
+     * propertiesObject.setCreateOutputFile(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("p")) {
+     * propertiesObject.setPreserveFileDate(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("r")) {
+     * propertiesObject.setPostCopyRemove(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("z")) {
+     * propertiesObject.setDigestType(FileUtilsLocal.SetDigestType(cmdLine.
+     * getOptionValue("z")));
+     * } else {
+     * showHelp(cliOptions);
+     * }
+     * 
+     * if (cmdLine.hasOption("y")) {
+     * log.info("User has accepted the terms via the command line option '-y'");
+     * } else {
+     * boolean userAccepts = UserUtilities.getUserAcceptance();
+     * if (userAccepts = true) {
+     * log.info("User has accepted the agreement, beginning processing...");
+     * }
+     * }
+     * 
+     * if (cmdLine.hasOption("k")) {
+     * propertiesObject.setKeepSourceStructure(true);
+     * } else {
+     * propertiesObject.setKeepSourceStructure(false);
+     * }
+     * 
+     * if (cmdLine.hasOption("df")) {
+     * propertiesObject.setOrganizeDateFolders(true);
+     * } else {
+     * propertiesObject.setOrganizeDateFolders(false);
+     * }
+     * 
+     * if (cmdLine.hasOption("ds")) {
+     * String dateSourceStr = cmdLine.getOptionValue("ds").toUpperCase();
+     * try {
+     * propertiesObject
+     * .setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.
+     * valueOf(dateSourceStr));
+     * } catch (IllegalArgumentException e) {
+     * log.error("Invalid date source: {}. Using MODIFIED as default.",
+     * dateSourceStr);
+     * propertiesObject.setDateSource(org.bofus.sumcompare.localutil.
+     * DateFolderOrganizer.DateSource.MODIFIED);
+     * }
+     * } else {
+     * propertiesObject.setDateSource(org.bofus.sumcompare.localutil.
+     * DateFolderOrganizer.DateSource.MODIFIED);
+     * }
+     * 
+     * if (cmdLine.hasOption("dp")) {
+     * String datePatternStr = cmdLine.getOptionValue("dp").toUpperCase();
+     * try {
+     * propertiesObject
+     * .setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.
+     * DatePattern.valueOf(datePatternStr));
+     * } catch (IllegalArgumentException e) {
+     * log.error("Invalid date pattern: {}. Using YEAR_MONTH as default.",
+     * datePatternStr);
+     * propertiesObject.setDatePattern(org.bofus.sumcompare.localutil.
+     * DateFolderOrganizer.DatePattern.YEAR_MONTH);
+     * }
+     * } else {
+     * propertiesObject.setDatePattern(org.bofus.sumcompare.localutil.
+     * DateFolderOrganizer.DatePattern.YEAR_MONTH);
+     * }
+     * 
+     * if (cmdLine.hasOption("dt")) {
+     * propertiesObject.setDateTargetDirectory(cmdLine.getOptionValue("dt"));
+     * log.debug("Setting date target directory: {}", cmdLine.getOptionValue("dt"));
+     * }
+     * 
+     * if (cmdLine.hasOption("um")) {
+     * propertiesObject.setUseMetadata(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("sd")) {
+     * propertiesObject.setSourceDuplicateCheckOnly(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("rd")) {
+     * propertiesObject.setRenameDuplicates(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("rp")) {
+     * propertiesObject.setDuplicatePrefix(cmdLine.getOptionValue("rp"));
+     * } else {
+     * propertiesObject.setDuplicatePrefix("DUPLICATE_FILE_");
+     * }
+     * 
+     * if (cmdLine.hasOption("de")) {
+     * propertiesObject.setDeleteEmptyFolders(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("m")) {
+     * propertiesObject.setMoveInsteadOfCopy(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("pd")) {
+     * propertiesObject.setPermanentlyDelete(true);
+     * }
+     * 
+     * if (cmdLine.hasOption("wl")) {
+     * // Enable file logging - this would need to be implemented
+     * // For now just log that it was requested
+     * log.info("File logging enabled via command line");
+     * }
+     * 
+     * if (cmdLine.hasOption("ld")) {
+     * // Set log directory - this would need to be implemented
+     * String logDir = cmdLine.getOptionValue("ld");
+     * log.info("Log directory set to: {}", logDir);
+     * }
+     * 
+     * if (cmdLine.hasOption("tc")) {
+     * try {
+     * int threadCount = Integer.parseInt(cmdLine.getOptionValue("tc"));
+     * if (threadCount > 0) {
+     * propertiesObject.setThreadCount(threadCount);
+     * log.info("Thread count set to: {}", threadCount);
+     * } else {
+     * log.warn("Invalid thread count (must be > 0), using default");
+     * propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
+     * }
+     * } catch (NumberFormatException e) {
+     * log.warn("Invalid thread count format, using default");
+     * propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
+     * }
+     * } else {
+     * // Default to number of available processors
+     * propertiesObject.setThreadCount(Runtime.getRuntime().availableProcessors());
+     * }
+     * 
+     * if (cmdLine.hasOption("h")) {
+     * showHelp(cliOptions);
+     * }
+     * 
+     * } catch (Exception e) {
+     * log.error(e.toString());
+     * throw e;
+     * }
+     * 
+     * // Log date-based organization settings if enabled
+     * if (propertiesObject.isOrganizeDateFolders()) {
+     * String orgDescription = DateFolderOrganizer.getOrganizationDescription(
+     * propertiesObject.getDateSource(),
+     * propertiesObject.getDatePattern());
+     * log.info("Date-based folder organization enabled: {}", orgDescription);
+     * }
+     * 
+     * // Step 1: Backup if requested (skip if dry run)
+     * if (propertiesObject.isBackupFirst() == true && !propertiesObject.isDryRun())
+     * {
+     * log.info("Creating backup of source directory...");
+     * FileUtilsLocal.zipDirectory(propertiesObject);
+     * log.info("Backup completed");
+     * } else if (propertiesObject.isBackupFirst() && propertiesObject.isDryRun()) {
+     * log.info("Backup skipped (dry run mode)");
+     * } else {
+     * log.warn(
+     * "Backup first not specified on the command line, we will not backup the source files first!!!"
+     * );
+     * }
+     * 
+     * // Step 2 & 4: Scan target and source directories in parallel
+     * log.info("Scanning directories in parallel...");
+     * 
+     * Thread targetScanThread = new Thread(() -> {
+     * try {
+     * FileUtilsLocal.getTargetDirectoryContentsArray(propertiesObject.
+     * getTargetLocation());
+     * int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
+     * log.info("Found " + targetCount + " files in target");
+     * 
+     * // Step 3: Compute target checksums
+     * log.info("Computing target checksums...");
+     * FileUtilsLocal.createTargetFileChecksumMap(
+     * TargetFileArraySingleton.getInstance(),
+     * propertiesObject.getDigestType());
+     * log.info("Target checksums completed");
+     * } catch (Exception e) {
+     * log.error("Error scanning target directory", e);
+     * }
+     * });
+     * 
+     * Thread sourceScanThread = new Thread(() -> {
+     * try {
+     * FileUtilsLocal.getSourceDirectoryContentsArray(propertiesObject.
+     * getSourceLocation());
+     * int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
+     * log.info("Found " + sourceCount + " files in source");
+     * } catch (Exception e) {
+     * log.error("Error scanning source directory", e);
+     * }
+     * });
+     * 
+     * // Start both threads
+     * targetScanThread.start();
+     * sourceScanThread.start();
+     * 
+     * // Wait for both to complete
+     * targetScanThread.join();
+     * sourceScanThread.join();
+     * 
+     * log.info("Directory scanning completed");
+     * 
+     * log.info("Processing source files...");
+     * log.debug(
+     * "Iterating through the source array, and checking if there is already a matching checksum in the target array"
+     * );
+     * 
+     * // Use ExecutorService with configurable thread count
+     * int threadCount = propertiesObject.getThreadCount();
+     * log.info("Using {} threads for parallel processing", threadCount);
+     * java.util.concurrent.ExecutorService executor =
+     * java.util.concurrent.Executors.newFixedThreadPool(threadCount);
+     * java.util.List<String> sourceFiles =
+     * SourceFileArraySingleton.getInstance().getArray();
+     * java.util.concurrent.CountDownLatch latch = new
+     * java.util.concurrent.CountDownLatch(sourceFiles.size());
+     * 
+     * for (String thisSourceFileName : sourceFiles) {
+     * executor.submit(() -> {
+     * try {
+     * File thisSourceFile = new File(thisSourceFileName);
+     * 
+     * // Capture file metadata
+     * FileMetadata fileMetadata =
+     * FileMetadataExtractor.getFileMetadata(thisSourceFile, propertiesObject);
+     * 
+     * // Clone digest for thread-safety
+     * MessageDigest threadDigest = (MessageDigest)
+     * propertiesObject.getDigestType().clone();
+     * String thisSourceChecksum = FileUtilsLocal.getFileChecksum(threadDigest,
+     * thisSourceFile);
+     * 
+     * // Synchronized access to shared collections
+     * synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
+     * if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(
+     * thisSourceChecksum)) {
+     * String existingfile =
+     * TargetFileHashMapSingleton.getInstance().getMap().get(thisSourceChecksum);
+     * String thisSourceFileNameOnly =
+     * FileUtilsLocal.getFileName(thisSourceFileName);
+     * String thisTargetFileNameOnly = FileUtilsLocal.getFileName(existingfile);
+     * 
+     * if (thisSourceFileNameOnly.trim().equals(thisTargetFileNameOnly.trim())) {
+     * // if this is a dryrun, add to the map, so that we can create an output file
+     * of
+     * // all files
+     * if (propertiesObject.isDryRun() == true) {
+     * MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName,
+     * existingfile);
+     * }
+     * } else {
+     * log.info(
+     * String.format(
+     * "%s [%s] seems to be a copy of file:\r\n%s\r\n",
+     * thisSourceFileName, fileMetadata.getFileType(), existingfile));
+     * MatchingFileHashMapSingleton.getInstance().addToMap(thisSourceFileName,
+     * existingfile);
+     * }
+     * 
+     * } else {
+     * String targetFileName = FileUtilsLocal.getFileName(thisSourceFileName);
+     * String targetFullPath = null;
+     * String sourceBasePath = null;
+     * File targetFile = null;
+     * 
+     * // Use date-based folder organization if enabled
+     * if (propertiesObject.isOrganizeDateFolders()) {
+     * try {
+     * File baseTargetDir = new File(propertiesObject.getTargetLocation());
+     * targetFile = org.bofus.sumcompare.localutil.DateFolderOrganizer.
+     * generateDateBasedTargetPath(
+     * thisSourceFile,
+     * baseTargetDir,
+     * props.getDateSource(),
+     * props.getDatePattern(),
+     * props.isKeepSourceStructure(),
+     * props.isUseMetadata(),
+     * fileMetadata);
+     * targetFullPath = targetFile.getAbsolutePath();
+     * } catch (Exception e) {
+     * log.
+     * error("Error generating date-based path for {}, falling back to standard path"
+     * ,
+     * thisSourceFileName,
+     * e);
+     * // Fallback to standard logic
+     * targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar +
+     * targetFileName;
+     * targetFile = new File(targetFullPath);
+     * }
+     * } else if (propertiesObject.isKeepSourceStructure() == true) {
+     * sourceBasePath =
+     * thisSourceFileName.replace(propertiesObject.getSourceLocation(), "");
+     * String tempPath = FilenameUtils.getPath(sourceBasePath);
+     * targetFullPath = propertiesObject.getTargetLocation()
+     * + File.separatorChar
+     * + tempPath
+     * + File.separatorChar
+     * + targetFileName;
+     * targetFile = new File(targetFullPath);
+     * } else {
+     * targetFullPath = propertiesObject.getTargetLocation() + File.separatorChar +
+     * targetFileName;
+     * targetFile = new File(targetFullPath);
+     * }
+     * 
+     * CopiedFileHashMapSingleton.getInstance().getMap().put(thisSourceFileName,
+     * targetFullPath);
+     * if (propertiesObject.isDryRun() == true) {
+     * log.info(
+     * String.format("Would Copy File [%s]: %s to %s (%s)",
+     * fileTypeDesc, thisSourceFileName, targetFullPath, metadata.getSummary()));
+     * } else {
+     * // Ensure date-based folder exists before copying
+     * if (propertiesObject.isOrganizeDateFolders()) {
+     * DateFolderOrganizer.ensureDateFolderExists(targetFile);
+     * }
+     * log.info(
+     * String.format("Copying [%s]: %s (%s)", fileTypeDesc,
+     * thisSourceFile.getName(),
+     * metadata.getSummary()));
+     * FileUtils.copyFile(thisSourceFile, targetFile,
+     * propertiesObject.isPreserveFileDate());
+     * }
+     * }
+     * }
+     * } catch (Exception e) {
+     * log.error("Error processing source file: " + thisSourceFileName, e);
+     * } finally {
+     * latch.countDown();
+     * }
+     * });
+     * }
+     * 
+     * // Wait for all tasks to complete
+     * try {
+     * latch.await();
+     * } catch (InterruptedException e) {
+     * log.error("Processing was interrupted", e);
+     * Thread.currentThread().interrupt();
+     * }
+     * 
+     * // Shutdown executor
+     * executor.shutdown();
+     * try {
+     * if (!executor.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
+     * executor.shutdownNow();
+     * }
+     * } catch (InterruptedException e) {
+     * executor.shutdownNow();
+     * Thread.currentThread().interrupt();
+     * }
+     * 
+     * log.info("All source files processed");
+     * 
+     * // Generate report if requested
+     * if (propertiesObject.isCreateOutputFile() == true) {
+     * log.info("Generating Excel report...");
+     * ReportUtils.createOutputExcel();
+     * log.info("Report created: Copy_Output.xlsx");
+     * }
+     * 
+     * // Update final statistics
+     * int copied = CopiedFileHashMapSingleton.getInstance().getMap().size();
+     * int duplicates = MatchingFileHashMapSingleton.getInstance().getMap().size();
+     * 
+     * log.info("================================================");
+     * log.info("           COMPLETED SUCCESSFULLY               ");
+     * log.info("================================================");
+     * log.info(String.format("Files copied: %d", copied));
+     * log.info(String.format("Duplicates found: %d", duplicates));
+     * log.info("================================================");
+     */
   }
 
   /*************************************************
    * @param cliOptions
    *************************************************/
-  private static void showHelp(Options cliOptions) {
-    // automatically generate the help statement
-    HelpFormatter formatter = new HelpFormatter();
-    formatter.printHelp("Main.jar", cliOptions);
-    System.exit(0);
-  }
+  /*
+   * private static void showHelp(Options cliOptions) {
+   * // automatically generate the help statement
+   * HelpFormatter formatter = new HelpFormatter();
+   * formatter.printHelp("Main.jar", cliOptions);
+   * System.exit(0);
+   * }
+   */
 }

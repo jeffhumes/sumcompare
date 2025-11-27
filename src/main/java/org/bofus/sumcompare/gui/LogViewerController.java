@@ -146,7 +146,7 @@ public class LogViewerController {
     @FXML
     private void onClose() {
         running.set(false);
-        if (tailThread != null) {
+        if (null != tailThread) {
             tailThread.interrupt();
         }
         Stage stage = (Stage) logTextArea.getScene().getWindow();
@@ -155,7 +155,7 @@ public class LogViewerController {
 
     public void shutdown() {
         running.set(false);
-        if (tailThread != null) {
+        if (null != tailThread) {
             tailThread.interrupt();
         }
     }

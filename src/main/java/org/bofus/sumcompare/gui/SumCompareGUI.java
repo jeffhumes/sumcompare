@@ -20,13 +20,13 @@ public class SumCompareGUI extends Application {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/sumcompare.fxml"));
             Parent root = loader.load();
 
-            Scene scene = new Scene(root, 800, 600);
+            Scene scene = new Scene(root, 1200, 1000);
             scene.getStylesheets().add(getClass().getResource("/css/styles.css").toExternalForm());
 
             primaryStage.setTitle("SumCompare - Intelligent File Deduplication");
             primaryStage.setScene(scene);
-            primaryStage.setMinWidth(700);
-            primaryStage.setMinHeight(500);
+            primaryStage.setMinWidth(1024);
+            primaryStage.setMinHeight(768);
             primaryStage.show();
 
             log.info("SumCompare GUI started successfully");

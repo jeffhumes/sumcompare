@@ -20,103 +20,117 @@ import lombok.Data;
 public class FileMetadata {
 
     private String filePath;
+    private String fileName;
+    private String absolutePath;
+    private String fileExtension;
     private long sizeBytes;
     private String creationTime;
     private String lastModifiedTime;
     private String lastAccessTime;
+    private String exifOriginalDate;
+    private String exifModifiedDate;
+    private String exifDigitizedDate;
+    private String videoCreationDate;
     private boolean isReadOnly;
     private boolean isHidden;
     private boolean isDirectory;
     private String owner;
+    private String fileType;
+    private boolean isMediaFile;
+    private String mimeType;
+    private String dateTargetLocation;
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.systemDefault());
+    // private static final DateTimeFormatter FORMATTER =
+    // DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    // .withZone(ZoneId.systemDefault());
 
-    /**
-     * Creates a FileMetadata object from a File.
-     * 
-     * @param file The file to extract metadata from
-     * @return FileMetadata object with populated attributes
-     * @throws IOException if metadata cannot be read
-     */
-    public static FileMetadata fromFile(File file) throws IOException {
-        FileMetadata metadata = new FileMetadata();
-        metadata.setFilePath(file.getAbsolutePath());
-        metadata.setSizeBytes(file.length());
-        metadata.setDirectory(file.isDirectory());
-        metadata.setReadOnly(!file.canWrite());
-        metadata.setHidden(file.isHidden());
+    // /**
+    // * Creates a FileMetadata object from a File.
+    // *
+    // * @param file The file to extract metadata from
+    // * @return FileMetadata object with populated attributes
+    // * @throws IOException if metadata cannot be read
+    // */
+    // public static FileMetadata fromFile(File file) throws IOException {
+    // // FileMetadata metadata = new FileMetadata();
+    // metadata.setFilePath(file.getAbsolutePath());
+    // metadata.setSizeBytes(file.length());
+    // metadata.setDirectory(file.isDirectory());
+    // metadata.setReadOnly(!file.canWrite());
+    // metadata.setHidden(file.isHidden());
 
-        // Use NIO for more detailed attributes
-        try {
-            Path path = file.toPath();
-            BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
+    // // Use NIO for more detailed attributes
+    // try {
+    // Path path = file.toPath();
+    // BasicFileAttributes attrs = Files.readAttributes(path,
+    // BasicFileAttributes.class);
 
-            metadata.setCreationTime(formatFileTime(attrs.creationTime()));
-            metadata.setLastModifiedTime(formatFileTime(attrs.lastModifiedTime()));
-            metadata.setLastAccessTime(formatFileTime(attrs.lastAccessTime()));
+    // metadata.setCreationTime(formatFileTime(attrs.creationTime()));
+    // metadata.setLastModifiedTime(formatFileTime(attrs.lastModifiedTime()));
+    // metadata.setLastAccessTime(formatFileTime(attrs.lastAccessTime()));
 
-            // Try to get owner (may not be available on all systems)
-            try {
-                metadata.setOwner(Files.getOwner(path).getName());
-            } catch (Exception e) {
-                metadata.setOwner("Unknown");
-            }
-        } catch (IOException e) {
-            // Fallback to basic file methods
-            metadata.setCreationTime("Unknown");
-            metadata.setLastModifiedTime(formatTimestamp(file.lastModified()));
-            metadata.setLastAccessTime("Unknown");
-            metadata.setOwner("Unknown");
-        }
+    // // Try to get owner (may not be available on all systems)
+    // try {
+    // metadata.setOwner(Files.getOwner(path).getName());
+    // } catch (Exception e) {
+    // metadata.setOwner("Unknown");
+    // }
+    // } catch (IOException e) {
+    // // Fallback to basic file methods
+    // metadata.setCreationTime("Unknown");
+    // metadata.setLastModifiedTime(formatTimestamp(file.lastModified()));
+    // metadata.setLastAccessTime("Unknown");
+    // metadata.setOwner("Unknown");
+    // }
 
-        return metadata;
-    }
+    // return metadata;
+    // }
 
-    private static String formatFileTime(FileTime fileTime) {
-        Instant instant = fileTime.toInstant();
-        return FORMATTER.format(instant);
-    }
+    // private static String formatFileTime(FileTime fileTime) {
+    // Instant instant = fileTime.toInstant();
+    // return FORMATTER.format(instant);
+    // }
 
-    private static String formatTimestamp(long timestamp) {
-        Instant instant = Instant.ofEpochMilli(timestamp);
-        return FORMATTER.format(instant);
-    }
+    // private static String formatTimestamp(long timestamp) {
+    // Instant instant = Instant.ofEpochMilli(timestamp);
+    // return FORMATTER.format(instant);
+    // }
 
     /**
      * Returns a human-readable size string (e.g., "1.5 MB", "432 KB").
      */
-    public String getFormattedSize() {
-        if (sizeBytes < 1024) {
-            return sizeBytes + " B";
-        } else if (sizeBytes < 1024 * 1024) {
-            return String.format("%.2f KB", sizeBytes / 1024.0);
-        } else if (sizeBytes < 1024 * 1024 * 1024) {
-            return String.format("%.2f MB", sizeBytes / (1024.0 * 1024.0));
-        } else {
-            return String.format("%.2f GB", sizeBytes / (1024.0 * 1024.0 * 1024.0));
-        }
-    }
+    // public String getFormattedSize() {
+    // if (sizeBytes < 1024) {
+    // return sizeBytes + " B";
+    // } else if (sizeBytes < 1024 * 1024) {
+    // return String.format("%.2f KB", sizeBytes / 1024.0);
+    // } else if (sizeBytes < 1024 * 1024 * 1024) {
+    // return String.format("%.2f MB", sizeBytes / (1024.0 * 1024.0));
+    // } else {
+    // return String.format("%.2f GB", sizeBytes / (1024.0 * 1024.0 * 1024.0));
+    // }
+    // }
 
-    /**
-     * Returns a compact summary of the metadata.
-     */
-    public String getSummary() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Size: ").append(getFormattedSize());
-        sb.append(" | Modified: ").append(lastModifiedTime);
-        if (isReadOnly) {
-            sb.append(" | Read-only");
-        }
-        return sb.toString();
-    }
+    // /**
+    // * Returns a compact summary of the metadata.
+    // */
+    // public String getSummary() {
+    // StringBuilder sb = new StringBuilder();
+    // sb.append("Size: ").append(getFormattedSize());
+    // sb.append(" | Modified: ").append(lastModifiedTime);
+    // if (isReadOnly) {
+    // sb.append(" | Read-only");
+    // }
+    // return sb.toString();
+    // }
 
-    @Override
-    public String toString() {
-        return String.format(
-                "FileMetadata{path='%s', size=%s, created='%s', modified='%s', accessed='%s', owner='%s', readOnly=%s, hidden=%s}",
-                filePath, getFormattedSize(), creationTime, lastModifiedTime,
-                lastAccessTime, owner, isReadOnly, isHidden);
-    }
+    // @Override
+    // public String toString() {
+    // return String.format(
+    // "FileMetadata{path='%s', size=%s, created='%s', modified='%s', accessed='%s',
+    // owner='%s', readOnly=%s, hidden=%s}",
+    // filePath, getFormattedSize(), creationTime, lastModifiedTime,
+    // lastAccessTime, owner, isReadOnly, isHidden);
+    // }
 
 }

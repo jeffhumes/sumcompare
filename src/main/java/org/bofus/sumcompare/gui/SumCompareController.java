@@ -17,7 +17,8 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import lombok.extern.slf4j.Slf4j;
 
-import org.bofus.sumcompare.localutil.FileTypeDetector;
+import com.drew.imaging.ImageProcessingException;
+import org.bofus.sumcompare.localutil.FileMetadataExtractor;
 import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
 import org.bofus.sumcompare.model.FileMetadata;
@@ -27,6 +28,7 @@ import org.bofus.sumcompare.singletons.*;
 import java.io.File;
 import java.io.IOException;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -132,7 +134,7 @@ public class SumCompareController {
         threadCountSpinner.setValueFactory(valueFactory);
 
         // Populate date source choices with descriptions
-        if (dateSourceComboBox != null) {
+        if (null != dateSourceComboBox) {
             dateSourceComboBox.getItems().addAll(
                     "MODIFIED (last changed)",
                     "CREATED (when created)",
@@ -142,7 +144,7 @@ public class SumCompareController {
         }
 
         // Populate date pattern choices with examples
-        if (datePatternComboBox != null) {
+        if (null != datePatternComboBox) {
             datePatternComboBox.getItems().addAll(
                     "YEAR_MONTH (2025-11)",
                     "YEAR_MONTH_SLASH (2025/11)",
@@ -155,21 +157,21 @@ public class SumCompareController {
         }
 
         // Add listener to enable/disable date options when checkbox is toggled
-        if (dateFoldersCheckBox != null) {
+        if (null != dateFoldersCheckBox) {
             dateFoldersCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
-                if (dateSourceComboBox != null) {
+                if (null != dateSourceComboBox) {
                     dateSourceComboBox.setDisable(!newValue);
                 }
-                if (datePatternComboBox != null) {
+                if (null != datePatternComboBox) {
                     datePatternComboBox.setDisable(!newValue);
                 }
-                if (dateTargetField != null) {
+                if (null != dateTargetField) {
                     dateTargetField.setDisable(!newValue);
                 }
-                if (dateTargetBrowseButton != null) {
+                if (null != dateTargetBrowseButton) {
                     dateTargetBrowseButton.setDisable(!newValue);
                 }
-                if (useMetadataCheckBox != null) {
+                if (null != useMetadataCheckBox) {
                     useMetadataCheckBox.setDisable(!newValue);
                 }
                 updateModeStatusLabel();
@@ -177,35 +179,35 @@ public class SumCompareController {
         }
 
         // Disable date target controls by default
-        if (dateTargetField != null) {
+        if (null != dateTargetField) {
             dateTargetField.setDisable(true);
         }
-        if (dateTargetBrowseButton != null) {
+        if (null != dateTargetBrowseButton) {
             dateTargetBrowseButton.setDisable(true);
         }
-        if (useMetadataCheckBox != null) {
+        if (null != useMetadataCheckBox) {
             useMetadataCheckBox.setDisable(true);
         }
 
         // Initialize rename duplicates controls
-        if (duplicatePrefixField != null) {
+        if (null != duplicatePrefixField) {
             duplicatePrefixField.setDisable(true); // Disabled by default
         }
-        if (renameDuplicatesCheckBox != null) {
+        if (null != renameDuplicatesCheckBox) {
             renameDuplicatesCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
-                if (duplicatePrefixField != null) {
+                if (null != duplicatePrefixField) {
                     duplicatePrefixField.setDisable(!newValue);
                 }
             });
         }
 
         // Initialize move/delete controls
-        if (permanentlyDeleteCheckBox != null) {
+        if (null != permanentlyDeleteCheckBox) {
             permanentlyDeleteCheckBox.setDisable(true); // Disabled by default
         }
-        if (moveFilesCheckBox != null) {
+        if (null != moveFilesCheckBox) {
             moveFilesCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
-                if (permanentlyDeleteCheckBox != null) {
+                if (null != permanentlyDeleteCheckBox) {
                     permanentlyDeleteCheckBox.setDisable(!newValue);
                     if (!newValue) {
                         permanentlyDeleteCheckBox.setSelected(false);
@@ -215,14 +217,14 @@ public class SumCompareController {
         }
 
         // Initialize file logging control
-        if (writeLogToFileCheckBox != null) {
+        if (null != writeLogToFileCheckBox) {
             // Set default log directory
             String defaultLogDir = System.getProperty("user.home") + "/.sumcompare/logs";
-            if (logDirectoryField != null) {
+            if (null != logDirectoryField) {
                 logDirectoryField.setText(defaultLogDir);
                 logDirectoryField.setDisable(true); // Disabled by default
             }
-            if (logDirectoryBrowseButton != null) {
+            if (null != logDirectoryBrowseButton) {
                 logDirectoryBrowseButton.setDisable(true); // Disabled by default
             }
 
@@ -231,18 +233,43 @@ public class SumCompareController {
 
             // Add listener to enable/disable file logging and controls
             writeLogToFileCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
-                if (logDirectoryField != null) {
+                if (null != logDirectoryField) {
                     logDirectoryField.setDisable(!newValue);
                 }
-                if (logDirectoryBrowseButton != null) {
+                if (null != logDirectoryBrowseButton) {
                     logDirectoryBrowseButton.setDisable(!newValue);
                 }
                 setFileLoggingEnabled(newValue);
             });
         }
 
-        // Initialize progress bar to 0
-        progressBar.setProgress(0.0);
+        // UISelectorsObjectSingleton uiSelectorObject =
+        // UISelectorsObjectSingleton.getInstance();
+
+        // uiSelectorObject.setAlgorithmComboBox(algorithmComboBox);
+        // uiSelectorObject.setSourceTextField(sourceTextField);
+        // uiSelectorObject.setTargetTextField(targetTextField);
+        // uiSelectorObject.setTargetBrowseButton(targetBrowseButton);
+        // uiSelectorObject.setThreadCountSpinner(threadCountSpinner);
+        // uiSelectorObject.setDryRunCheckBox(dryRunCheckBox);
+        // uiSelectorObject.setKeepStructureCheckBox(keepStructureCheckBox);
+        // uiSelectorObject.setBackupCheckBox(backupCheckBox);
+        // uiSelectorObject.setPreserveDateCheckBox(preserveDateCheckBox);
+        // uiSelectorObject.setCreateReportCheckBox(createReportCheckBox);
+        // uiSelectorObject.setWriteLogToFileCheckBox(writeLogToFileCheckBox);
+        // uiSelectorObject.setLogDirectoryField(logDirectoryField);
+        // uiSelectorObject.setLogDirectoryBrowseButton(logDirectoryBrowseButton);
+        // uiSelectorObject.setStartButton(startButton);
+        // uiSelectorObject.setCancelButton(cancelButton);
+        // uiSelectorObject.setProgressBar(progressBar);
+        // uiSelectorObject.setStatusLabel(statusLabel);
+        // uiSelectorObject.setScannedCountLabel(scannedCountLabel);
+        // uiSelectorObject.setCopiedCountLabel(copiedCountLabel);
+        // uiSelectorObject.setDuplicatesCountLabel(duplicatesCountLabel);
+        // uiSelectorObject.setElapsedTimeLabel(elapsedTimeLabel);
+
+        // // Initialize progress bar to 0
+        // uiSelectorObject.getProgressBar().setProgress(0.0);
 
         // Clear statistics
         resetStatistics();
@@ -278,7 +305,7 @@ public class SumCompareController {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Source Directory");
 
-        if (sourceTextField.getText() != null && !sourceTextField.getText().isEmpty()) {
+        if (null != sourceTextField.getText() && !sourceTextField.getText().isEmpty()) {
             File current = new File(sourceTextField.getText());
             if (current.exists()) {
                 chooser.setInitialDirectory(current);
@@ -286,7 +313,7 @@ public class SumCompareController {
         }
 
         File selected = chooser.showDialog(getStage());
-        if (selected != null) {
+        if (null != selected) {
             sourceTextField.setText(selected.getAbsolutePath());
             appendLog("Source directory selected: " + selected.getAbsolutePath());
         }
@@ -297,7 +324,7 @@ public class SumCompareController {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Target Directory");
 
-        if (targetTextField.getText() != null && !targetTextField.getText().isEmpty()) {
+        if (null != targetTextField.getText() && !targetTextField.getText().isEmpty()) {
             File current = new File(targetTextField.getText());
             if (current.exists()) {
                 chooser.setInitialDirectory(current);
@@ -305,7 +332,7 @@ public class SumCompareController {
         }
 
         File selected = chooser.showDialog(getStage());
-        if (selected != null) {
+        if (null != selected) {
             targetTextField.setText(selected.getAbsolutePath());
             appendLog("Target directory selected: " + selected.getAbsolutePath());
         }
@@ -316,7 +343,7 @@ public class SumCompareController {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Log Directory");
 
-        if (logDirectoryField.getText() != null && !logDirectoryField.getText().isEmpty()) {
+        if (null != logDirectoryField.getText() && !logDirectoryField.getText().isEmpty()) {
             File current = new File(logDirectoryField.getText());
             if (current.exists()) {
                 chooser.setInitialDirectory(current);
@@ -324,7 +351,7 @@ public class SumCompareController {
         }
 
         File selected = chooser.showDialog(getStage());
-        if (selected != null) {
+        if (null != selected) {
             logDirectoryField.setText(selected.getAbsolutePath());
             appendLog("Log directory changed to: " + selected.getAbsolutePath());
 
@@ -341,12 +368,12 @@ public class SumCompareController {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Date Organization Target Directory");
 
-        if (dateTargetField.getText() != null && !dateTargetField.getText().isEmpty()) {
+        if (null != dateTargetField.getText() && !dateTargetField.getText().isEmpty()) {
             File current = new File(dateTargetField.getText());
             if (current.exists()) {
                 chooser.setInitialDirectory(current);
             }
-        } else if (sourceTextField.getText() != null && !sourceTextField.getText().isEmpty()) {
+        } else if (null != sourceTextField.getText() && !sourceTextField.getText().isEmpty()) {
             // Default to source directory if date target is empty
             File current = new File(sourceTextField.getText());
             if (current.exists()) {
@@ -355,7 +382,7 @@ public class SumCompareController {
         }
 
         File selected = chooser.showDialog(getStage());
-        if (selected != null) {
+        if (null != selected) {
             dateTargetField.setText(selected.getAbsolutePath());
             appendLog("Date target directory selected: " + selected.getAbsolutePath());
         }
@@ -410,7 +437,7 @@ public class SumCompareController {
 
     @FXML
     private void onCancel() {
-        if (currentTask != null && currentTask.isRunning()) {
+        if (null != currentTask && currentTask.isRunning()) {
             currentTask.cancel();
             appendLog("\n=== OPERATION CANCELLED BY USER ===");
             statusLabel.setText("Cancelled");
@@ -449,7 +476,7 @@ public class SumCompareController {
             Stage logStage = new Stage();
             logStage.setTitle("SumCompare - Application Log");
 
-            Scene scene = new Scene(root, 900, 600);
+            Scene scene = new Scene(root, 1024, 768);
             scene.getStylesheets().add(getClass().getResource("/css/styles.css").toExternalForm());
             logStage.setScene(scene);
 
@@ -468,7 +495,7 @@ public class SumCompareController {
     private void showLogInCurrentOutput() {
         try {
             // Get log directory from field or use default
-            String logDir = logDirectoryField != null && !logDirectoryField.getText().isEmpty()
+            String logDir = null != logDirectoryField && !logDirectoryField.getText().isEmpty()
                     ? logDirectoryField.getText()
                     : System.getProperty("user.home") + "/.sumcompare/logs";
 
@@ -503,13 +530,13 @@ public class SumCompareController {
 
             java.nio.file.Files.lines(logFile.toPath())
                     .forEach(line -> {
-                        if (logTextArea != null) {
+                        if (null != logTextArea) {
                             Platform.runLater(() -> logTextArea.appendText(line + "\n"));
                         }
                     });
 
             // Scroll to bottom
-            if (logTextArea != null) {
+            if (null != logTextArea) {
                 Platform.runLater(() -> logTextArea.setScrollTop(Double.MAX_VALUE));
             }
 
@@ -522,7 +549,7 @@ public class SumCompareController {
 
     private void openLogWindow() {
         // If window already exists, just clear it and bring to front
-        if (logWindowStage != null && logWindowStage.isShowing()) {
+        if (null != logWindowStage && logWindowStage.isShowing()) {
             logTextArea.clear();
             logWindowStage.toFront();
             return;
@@ -566,156 +593,171 @@ public class SumCompareController {
         appendLog("");
     }
 
-    @FXML
-    private void onShowCliCommand() {
-        StringBuilder cliCommand = new StringBuilder("java -jar sumcompare.jar");
+    // @FXML
+    // private void onShowCliCommand() {
+    // StringBuilder cliCommand = new StringBuilder("java -jar sumcompare.jar");
 
-        // Required options
-        if (sourceTextField.getText() != null && !sourceTextField.getText().trim().isEmpty()) {
-            cliCommand.append(" -s \"").append(sourceTextField.getText()).append("\"");
-        } else {
-            showError("Source directory is required");
-            return;
-        }
+    // // Required options
+    // if (null != sourceTextField.getText() &&
+    // !sourceTextField.getText().trim().isEmpty()) {
+    // cliCommand.append(" -s \"").append(sourceTextField.getText()).append("\"");
+    // } else {
+    // showError("Source directory is required");
+    // return;
+    // }
 
-        if (!sourceDuplicateCheckBox.isSelected()) {
-            if (targetTextField.getText() != null && !targetTextField.getText().trim().isEmpty()) {
-                cliCommand.append(" -t \"").append(targetTextField.getText()).append("\"");
-            } else {
-                showError("Target directory is required (unless in source duplicate check mode)");
-                return;
-            }
-        } else {
-            cliCommand.append(" -sd");
-            cliCommand.append(" -t \"").append(sourceTextField.getText()).append("\"");
-        }
+    // if (!sourceDuplicateCheckBox.isSelected()) {
+    // if (null != targetTextField.getText() &&
+    // !targetTextField.getText().trim().isEmpty()) {
+    // cliCommand.append(" -t \"").append(targetTextField.getText()).append("\"");
+    // } else {
+    // showError("Target directory is required (unless in source duplicate check
+    // mode)");
+    // return;
+    // }
+    // } else {
+    // cliCommand.append(" -sd");
+    // cliCommand.append(" -t \"").append(sourceTextField.getText()).append("\"");
+    // }
 
-        if (algorithmComboBox.getValue() != null) {
-            cliCommand.append(" -z ").append(algorithmComboBox.getValue());
-        } else {
-            showError("Checksum algorithm is required");
-            return;
-        }
+    // if (null != algorithmComboBox.getValue()) {
+    // cliCommand.append(" -z ").append(algorithmComboBox.getValue());
+    // } else {
+    // showError("Checksum algorithm is required");
+    // return;
+    // }
 
-        // Thread count
-        if (threadCountSpinner != null && threadCountSpinner.getValue() != null) {
-            int threadCount = threadCountSpinner.getValue();
-            // Only include if not using default (number of processors)
-            if (threadCount != Runtime.getRuntime().availableProcessors()) {
-                cliCommand.append(" -tc ").append(threadCount);
-            }
-        }
+    // // Thread count
+    // if (threadCountSpinner != null && null != threadCountSpinner.getValue()) {
+    // int threadCount = threadCountSpinner.getValue();
+    // // Only include if not using default (number of processors)
+    // if (threadCount != Runtime.getRuntime().availableProcessors()) {
+    // cliCommand.append(" -tc ").append(threadCount);
+    // }
+    // }
 
-        // Optional flags
-        if (dryRunCheckBox.isSelected()) {
-            cliCommand.append(" -d");
-        }
+    // // Optional flags
+    // if (dryRunCheckBox.isSelected()) {
+    // cliCommand.append(" -d");
+    // }
 
-        if (keepStructureCheckBox.isSelected()) {
-            cliCommand.append(" -k");
-        }
+    // if (keepStructureCheckBox.isSelected()) {
+    // cliCommand.append(" -k");
+    // }
 
-        if (backupCheckBox.isSelected()) {
-            cliCommand.append(" -b");
-        }
+    // if (backupCheckBox.isSelected()) {
+    // cliCommand.append(" -b");
+    // }
 
-        if (preserveDateCheckBox.isSelected()) {
-            cliCommand.append(" -p");
-        }
+    // if (preserveDateCheckBox.isSelected()) {
+    // cliCommand.append(" -p");
+    // }
 
-        if (createReportCheckBox.isSelected()) {
-            cliCommand.append(" -o");
-        }
+    // if (createReportCheckBox.isSelected()) {
+    // cliCommand.append(" -o");
+    // }
 
-        if (moveFilesCheckBox != null && moveFilesCheckBox.isSelected()) {
-            cliCommand.append(" -m");
+    // if (null != moveFilesCheckBox && moveFilesCheckBox.isSelected()) {
+    // cliCommand.append(" -m");
 
-            if (permanentlyDeleteCheckBox != null && permanentlyDeleteCheckBox.isSelected()) {
-                cliCommand.append(" -pd");
-            }
-        }
+    // if (null != permanentlyDeleteCheckBox &&
+    // permanentlyDeleteCheckBox.isSelected()) {
+    // cliCommand.append(" -pd");
+    // }
+    // }
 
-        // Date-based organization options
-        if (dateFoldersCheckBox != null && dateFoldersCheckBox.isSelected()) {
-            cliCommand.append(" -df");
+    // // Date-based organization options
+    // if (null != dateFoldersCheckBox && dateFoldersCheckBox.isSelected()) {
+    // cliCommand.append(" -df");
 
-            if (dateSourceComboBox != null && dateSourceComboBox.getValue() != null) {
-                String dateSource = dateSourceComboBox.getValue();
-                String enumName = dateSource.contains(" ") ? dateSource.substring(0, dateSource.indexOf(" "))
-                        : dateSource;
-                cliCommand.append(" -ds ").append(enumName);
-            }
+    // if (dateSourceComboBox != null && null != dateSourceComboBox.getValue()) {
+    // String dateSource = dateSourceComboBox.getValue();
+    // String enumName = dateSource.contains(" ") ? dateSource.substring(0,
+    // dateSource.indexOf(" "))
+    // : dateSource;
+    // cliCommand.append(" -ds ").append(enumName);
+    // }
 
-            if (datePatternComboBox != null && datePatternComboBox.getValue() != null) {
-                String datePattern = datePatternComboBox.getValue();
-                String enumName = datePattern.contains(" ") ? datePattern.substring(0, datePattern.indexOf(" "))
-                        : datePattern;
-                cliCommand.append(" -dp ").append(enumName);
-            }
+    // if (datePatternComboBox != null && null != datePatternComboBox.getValue()) {
+    // String datePattern = datePatternComboBox.getValue();
+    // String enumName = datePattern.contains(" ") ? datePattern.substring(0,
+    // datePattern.indexOf(" "))
+    // : datePattern;
+    // cliCommand.append(" -dp ").append(enumName);
+    // }
 
-            if (dateTargetField != null && !dateTargetField.getText().trim().isEmpty()) {
-                cliCommand.append(" -dt \"").append(dateTargetField.getText()).append("\"");
-            }
+    // if (null != dateTargetField && !dateTargetField.getText().trim().isEmpty()) {
+    // cliCommand.append(" -dt \"").append(dateTargetField.getText()).append("\"");
+    // }
 
-            if (useMetadataCheckBox != null && useMetadataCheckBox.isSelected()) {
-                cliCommand.append(" -um");
-            }
-        }
+    // if (null != useMetadataCheckBox && useMetadataCheckBox.isSelected()) {
+    // cliCommand.append(" -um");
+    // }
+    // }
 
-        // Duplicate handling options
-        if (renameDuplicatesCheckBox != null && renameDuplicatesCheckBox.isSelected()) {
-            cliCommand.append(" -rd");
+    // // Duplicate handling options
+    // if (null != renameDuplicatesCheckBox &&
+    // renameDuplicatesCheckBox.isSelected()) {
+    // cliCommand.append(" -rd");
 
-            if (duplicatePrefixField != null && !duplicatePrefixField.getText().trim().isEmpty()) {
-                cliCommand.append(" -rp \"").append(duplicatePrefixField.getText()).append("\"");
-            }
-        }
+    // if (null != duplicatePrefixField &&
+    // !duplicatePrefixField.getText().trim().isEmpty()) {
+    // cliCommand.append(" -rp
+    // \"").append(duplicatePrefixField.getText()).append("\"");
+    // }
+    // }
 
-        // Cleanup options
-        if (deleteEmptyFoldersCheckBox != null && deleteEmptyFoldersCheckBox.isSelected()) {
-            cliCommand.append(" -de");
-        }
+    // // Cleanup options
+    // if (null != deleteEmptyFoldersCheckBox &&
+    // deleteEmptyFoldersCheckBox.isSelected()) {
+    // cliCommand.append(" -de");
+    // }
 
-        // Logging options
-        if (writeLogToFileCheckBox != null && writeLogToFileCheckBox.isSelected()) {
-            cliCommand.append(" -wl");
+    // // Logging options
+    // if (null != writeLogToFileCheckBox && writeLogToFileCheckBox.isSelected()) {
+    // cliCommand.append(" -wl");
 
-            if (logDirectoryField != null && !logDirectoryField.getText().trim().isEmpty()) {
-                cliCommand.append(" -ld \"").append(logDirectoryField.getText()).append("\"");
-            }
-        }
+    // if (null != logDirectoryField &&
+    // !logDirectoryField.getText().trim().isEmpty()) {
+    // cliCommand.append(" -ld
+    // \"").append(logDirectoryField.getText()).append("\"");
+    // }
+    // }
 
-        // Add -y flag to skip acceptance prompt
-        cliCommand.append(" -y");
+    // // Add -y flag to skip acceptance prompt
+    // cliCommand.append(" -y");
 
-        // Show the command in a dialog
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Command Line Equivalent");
-        alert.setHeaderText("Equivalent CLI Command");
+    // // Show the command in a dialog
+    // Alert alert = new Alert(Alert.AlertType.INFORMATION);
+    // alert.setTitle("Command Line Equivalent");
+    // alert.setHeaderText("Equivalent CLI Command");
 
-        TextArea textArea = new TextArea(cliCommand.toString());
-        textArea.setEditable(false);
-        textArea.setWrapText(true);
-        textArea.setPrefRowCount(10);
+    // TextArea textArea = new TextArea(cliCommand.toString());
+    // textArea.setEditable(false);
+    // textArea.setWrapText(true);
+    // textArea.setPrefRowCount(10);
 
-        alert.getDialogPane().setContent(textArea);
-        alert.getDialogPane().setPrefWidth(800);
+    // alert.getDialogPane().setContent(textArea);
+    // alert.getDialogPane().setPrefWidth(800);
 
-        // Add copy button
-        ButtonType copyButton = new ButtonType("Copy to Clipboard");
-        ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(copyButton, closeButton);
+    // // Add copy button
+    // ButtonType copyButton = new ButtonType("Copy to Clipboard");
+    // ButtonType closeButton = new ButtonType("Close",
+    // ButtonBar.ButtonData.CANCEL_CLOSE);
+    // alert.getButtonTypes().setAll(copyButton, closeButton);
 
-        alert.showAndWait().ifPresent(response -> {
-            if (response == copyButton) {
-                javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
-                javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-                content.putString(cliCommand.toString());
-                clipboard.setContent(content);
-                appendLog("CLI command copied to clipboard");
-            }
-        });
-    }
+    // alert.showAndWait().ifPresent(response -> {
+    // if (response == copyButton) {
+    // javafx.scene.input.Clipboard clipboard =
+    // javafx.scene.input.Clipboard.getSystemClipboard();
+    // javafx.scene.input.ClipboardContent content = new
+    // javafx.scene.input.ClipboardContent();
+    // content.putString(cliCommand.toString());
+    // clipboard.setContent(content);
+    // appendLog("CLI command copied to clipboard");
+    // }
+    // });
+    // }
 
     @FXML
     private void onHelp() {
@@ -754,89 +796,12 @@ public class SumCompareController {
             @Override
             protected Void call() throws Exception {
                 try {
-                    // Create properties object
-                    PropertiesObject props = new PropertiesObject();
-                    props.setSourceLocation(sourceTextField.getText());
-                    props.setTargetLocation(targetTextField.getText());
-                    props.setDryRun(dryRunCheckBox.isSelected());
-                    props.setKeepSourceStructure(keepStructureCheckBox.isSelected());
-                    props.setBackupFirst(backupCheckBox.isSelected());
-                    props.setPreserveFileDate(preserveDateCheckBox.isSelected());
-                    props.setCreateOutputFile(createReportCheckBox.isSelected());
-                    props.setSourceDuplicateCheckOnly(sourceDuplicateCheckBox.isSelected());
-                    props.setUseMetadata(useMetadataCheckBox != null && useMetadataCheckBox.isSelected());
+                    UISelectorsObjectSingleton uiSelectorObject = UISelectorsObjectSingleton.getInstance();
 
-                    // Set duplicate renaming options
-                    props.setRenameDuplicates(
-                            renameDuplicatesCheckBox != null && renameDuplicatesCheckBox.isSelected());
-                    if (duplicatePrefixField != null && !duplicatePrefixField.getText().trim().isEmpty()) {
-                        props.setDuplicatePrefix(duplicatePrefixField.getText().trim());
-                    } else {
-                        props.setDuplicatePrefix("DUPLICATE_FILE_");
-                    }
+                    // PropertiesObject props = getProperties(uiSelectorObject);
+                    PropertiesObject props = getProperties();
 
-                    // Set cleanup options
-                    props.setDeleteEmptyFolders(
-                            deleteEmptyFoldersCheckBox != null && deleteEmptyFoldersCheckBox.isSelected());
-                    props.setMoveInsteadOfCopy(moveFilesCheckBox != null && moveFilesCheckBox.isSelected());
-                    props.setPermanentlyDelete(
-                            permanentlyDeleteCheckBox != null && permanentlyDeleteCheckBox.isSelected());
-
-                    // Set date-based folder organization
-                    if (dateFoldersCheckBox != null && dateFoldersCheckBox.isSelected()) {
-                        props.setOrganizeDateFolders(true);
-
-                        // Set date target directory (defaults to source if empty)
-                        if (dateTargetField != null && !dateTargetField.getText().trim().isEmpty()) {
-                            props.setDateTargetDirectory(dateTargetField.getText().trim());
-                        } else {
-                            // Default to source directory
-                            props.setDateTargetDirectory(sourceTextField.getText());
-                        }
-
-                        // Set date source
-                        if (dateSourceComboBox != null) {
-                            String dateSourceStr = dateSourceComboBox.getValue();
-                            // Extract enum name before the space (e.g., "MODIFIED (last changed)" ->
-                            // "MODIFIED")
-                            String enumName = dateSourceStr.contains(" ")
-                                    ? dateSourceStr.substring(0, dateSourceStr.indexOf(" "))
-                                    : dateSourceStr;
-                            props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource
-                                    .valueOf(enumName));
-                        } else {
-                            props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
-                        }
-
-                        // Set date pattern
-                        if (datePatternComboBox != null) {
-                            String datePatternStr = datePatternComboBox.getValue();
-                            // Extract enum name before the space (e.g., "YEAR_MONTH (2025-11)" ->
-                            // "YEAR_MONTH")
-                            String enumName = datePatternStr.contains(" ")
-                                    ? datePatternStr.substring(0, datePatternStr.indexOf(" "))
-                                    : datePatternStr;
-                            props.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern
-                                    .valueOf(enumName));
-                        } else {
-                            props.setDatePattern(
-                                    org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
-                        }
-
-                        String orgDescription = org.bofus.sumcompare.localutil.DateFolderOrganizer
-                                .getOrganizationDescription(
-                                        props.getDateSource(), props.getDatePattern());
-                        updateMessage("Date-based organization: " + orgDescription);
-                    } else {
-                        props.setOrganizeDateFolders(false);
-                    }
-
-                    // Set digest type
-                    String algorithm = algorithmComboBox.getValue();
-                    MessageDigest digest = FileUtilsLocal.SetDigestType(algorithm);
-                    props.setDigestType(digest);
-
-                    updateMessage("Using algorithm: " + algorithm);
+                    updateMessage("Using comparison algorithm: " + props.getDigestType().getAlgorithm());
 
                     // Check if this is date-sort-only mode (no duplicate checking)
                     boolean dateSortOnlyMode = props.isSourceDuplicateCheckOnly() && props.isOrganizeDateFolders();
@@ -857,9 +822,19 @@ public class SumCompareController {
                     }
 
                     // Step 2 & 4: Scan target and source directories in parallel
-                    updateMessage("Scanning directories in parallel...");
-
                     Thread targetScanThread = null;
+                    Thread sourceScanThread = new Thread(() -> {
+                        try {
+                            FileUtilsLocal.getSourceDirectoryContentsArray(props.getSourceLocation());
+                            int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
+                            updateMessage("Found " + sourceCount + " files in source");
+                            Platform.runLater(() -> updateScannedCount(sourceCount));
+                        } catch (Exception e) {
+                            log.error("Error scanning source directory", e);
+                            updateMessage("ERROR scanning source: " + e.getMessage());
+                        }
+                    });
+
                     if (props.isSourceDuplicateCheckOnly()) {
                         updateMessage("Source duplicate check mode: Target directory scan skipped");
                     } else {
@@ -882,36 +857,24 @@ public class SumCompareController {
                         });
                     }
 
-                    Thread sourceScanThread = new Thread(() -> {
-                        try {
-                            FileUtilsLocal.getSourceDirectoryContentsArray(props.getSourceLocation());
-                            int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
-                            updateMessage("Found " + sourceCount + " files in source");
-                            Platform.runLater(() -> updateScannedCount(sourceCount));
-                        } catch (Exception e) {
-                            log.error("Error scanning source directory", e);
-                            updateMessage("ERROR scanning source: " + e.getMessage());
-                        }
-                    });
-
-                    // Start both threads
+                    // Start both threads in parallel
+                    updateMessage("Scanning directories in parallel...");
+                    sourceScanThread.start();
                     if (!props.isSourceDuplicateCheckOnly()) {
                         targetScanThread.start();
                     }
 
-                    sourceScanThread.start();
-
-                    // Wait for both to complete
+                    // Wait for both threads to complete before proceeding
+                    sourceScanThread.join();
                     if (!props.isSourceDuplicateCheckOnly()) {
                         targetScanThread.join();
                     }
 
-                    sourceScanThread.join();
-
                     updateMessage("Directory scanning completed");
 
+                    // NOTE: CHECKED TO THIS POINT - ALL GOOD
                     // Step 5: Process source files
-                    updateMessage("Processing source files...");
+                    updateMessage("Processing files...");
                     processSourceFiles(props);
 
                     // Step 6: Generate report if requested
@@ -979,7 +942,7 @@ public class SumCompareController {
         // Bind message property to status and log
         currentTask.messageProperty().addListener((obs, oldMsg, newMsg) -> {
             Platform.runLater(() -> {
-                if (newMsg != null && !newMsg.isEmpty()) {
+                if (null != newMsg && !newMsg.isEmpty()) {
                     statusLabel.setText(newMsg);
                     appendLog(newMsg);
                 }
@@ -993,6 +956,103 @@ public class SumCompareController {
         Thread thread = new Thread(currentTask);
         thread.setDaemon(true);
         thread.start();
+    }
+
+    // private PropertiesObject getProperties(UISelectorsObjectSingleton
+    // uiSelectorObject) {
+    private PropertiesObject getProperties() {
+        PropertiesObject props = new PropertiesObject();
+
+        props.setSourceLocation(sourceTextField.getText());
+        props.setTargetLocation(targetTextField.getText());
+        props.setDryRun(dryRunCheckBox.isSelected());
+        props.setKeepSourceStructure(keepStructureCheckBox.isSelected());
+        props.setBackupFirst(backupCheckBox.isSelected());
+        props.setPreserveFileDate(preserveDateCheckBox.isSelected());
+        props.setCreateOutputFile(createReportCheckBox.isSelected());
+        props.setSourceDuplicateCheckOnly(sourceDuplicateCheckBox.isSelected());
+        props.setUseMetadata(null != useMetadataCheckBox && useMetadataCheckBox.isSelected());
+
+        // Set duplicate renaming options
+        props.setRenameDuplicates(
+                null != renameDuplicatesCheckBox && renameDuplicatesCheckBox.isSelected());
+
+        if (null != duplicatePrefixField && !duplicatePrefixField.getText().trim().isEmpty()) {
+            props.setDuplicatePrefix(duplicatePrefixField.getText().trim());
+        } else {
+            props.setDuplicatePrefix("DUPLICATE_FILE_");
+        }
+
+        // Set cleanup options
+        props.setDeleteEmptyFolders(
+                null != deleteEmptyFoldersCheckBox && deleteEmptyFoldersCheckBox.isSelected());
+
+        props.setMoveInsteadOfCopy(null != moveFilesCheckBox && moveFilesCheckBox.isSelected());
+
+        props.setPermanentlyDelete(
+                null != permanentlyDeleteCheckBox && permanentlyDeleteCheckBox.isSelected());
+
+        // Set date-based folder organization
+        if (null != dateFoldersCheckBox && dateFoldersCheckBox.isSelected()) {
+            props.setOrganizeDateFolders(true);
+
+            // Set date target directory (defaults to source if empty)
+            if (null != dateTargetField && !dateTargetField.getText().trim().isEmpty()) {
+                props.setDateTargetDirectory(dateTargetField.getText().trim());
+            } else {
+                // Default to source directory
+                props.setDateTargetDirectory(sourceTextField.getText());
+            }
+
+            // TODO: DEBUG HERE TO VALIDATE WORKING
+            // Set date source
+            if (null != dateSourceComboBox) {
+                String dateSourceStr = dateSourceComboBox.getValue();
+                // Extract enum name before the space (e.g., "MODIFIED (last changed)" ->
+                // "MODIFIED")
+                String enumName = dateSourceStr.contains(" ")
+                        ? dateSourceStr.substring(0, dateSourceStr.indexOf(" "))
+                        : dateSourceStr;
+                props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource
+                        .valueOf(enumName));
+            } else {
+                props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
+            }
+
+            // TODO: DEBUG HERE TO VALIDATE WORKING
+            // Set date pattern
+            if (null != datePatternComboBox) {
+                String datePatternStr = datePatternComboBox.getValue();
+                // Extract enum name before the space (e.g., "YEAR_MONTH (2025-11)" ->
+                // "YEAR_MONTH")
+                String enumName = datePatternStr.contains(" ")
+                        ? datePatternStr.substring(0, datePatternStr.indexOf(" "))
+                        : datePatternStr;
+                props.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern
+                        .valueOf(enumName));
+            } else {
+                props.setDatePattern(
+                        org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
+            }
+
+            String orgDescription = org.bofus.sumcompare.localutil.DateFolderOrganizer
+                    .getOrganizationDescription(
+                            props.getDateSource(), props.getDatePattern());
+        } else {
+            props.setOrganizeDateFolders(false);
+        }
+
+        // Set digest type
+        String algorithm = algorithmComboBox.getValue();
+        MessageDigest digest = null;
+        try {
+            digest = FileUtilsLocal.SetDigestType(algorithm);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        props.setDigestType(digest);
+
+        return props;
     }
 
     private void processSourceFiles(PropertiesObject props) throws Exception {
@@ -1013,23 +1073,37 @@ public class SumCompareController {
 
                     File thisSourceFile = new File(sourceFile);
 
-                    // Capture file metadata
-                    FileMetadata metadata = FileMetadata.fromFile(thisSourceFile);
+                    log.debug("attempting to get file metadata for: {}", thisSourceFile.getAbsolutePath());
+                    FileMetadata fileMetadata = new FileMetadata();
+                    // fileMetadata = FileMetadataExtractor.getFileMetaInformation(fileMetadata);
 
-                    // Detect file type
-                    String fileTypeDesc = FileTypeDetector.getFileTypeDescription(thisSourceFile);
+                    try {
+                        fileMetadata = FileMetadataExtractor.getFileMetadata(thisSourceFile, props);
+                        log.debug("FileMetadata extracted: {}", fileMetadata);
+                        log.debug("completed getting file metadata for: {}",
+                                thisSourceFile.getName());
+                    } catch (IOException e) {
+                        log.error("IOException while extracting metadata for {}: {}",
+                                thisSourceFile.getName(),
+                                e.getMessage(), e);
+                        throw e;
+                    } catch (ImageProcessingException e) {
+                        log.error("ImageProcessingException while extracting metadata for {}: {}",
+                                thisSourceFile.getName(), e.getMessage(), e);
+                        throw e;
+                    }
 
+                    // NOTE: CONTINUE HERE
                     // In date-sort-only mode, skip duplicate checking and just organize files
                     if (dateSortOnlyMode) {
                         // Just copy/organize the file without any duplicate checking
-                        String targetPath = calculateTargetPath(sourceFile, props);
+                        String targetPath = calculateTargetPath(fileMetadata, props);
                         CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
 
                         if (props.isDryRun()) {
                             String fileName = thisSourceFile.getName();
                             String action = props.isMoveInsteadOfCopy() ? "move and organize" : "organize";
-                            String logMsg = String.format("Would %s [%s]: %s (%s)",
-                                    action, fileTypeDesc, fileName, metadata.getSummary());
+                            String logMsg = String.format("Would %s %s", action, fileName);
                             Platform.runLater(() -> appendLog(logMsg));
                         } else {
                             File targetFile = new File(targetPath);
@@ -1045,13 +1119,12 @@ public class SumCompareController {
                                     String fileName = thisSourceFile.getName();
                                     String action = props.isPermanentlyDelete() ? "Moved (deleted)"
                                             : "Moved (to trash)";
-                                    String logMsg = String.format("%s [%s]: %s (%s)",
-                                            action, fileTypeDesc, fileName, metadata.getSummary());
+                                    String logMsg = String.format("%s [%s]: %s", action, fileName);
                                     Platform.runLater(() -> appendLog(logMsg));
                                 } else {
                                     String fileName = thisSourceFile.getName();
-                                    String logMsg = String.format("Copied but failed to delete source [%s]: %s (%s)",
-                                            fileTypeDesc, fileName, metadata.getSummary());
+                                    String logMsg = String.format("Copied but failed to delete source [%s]: %s",
+                                            fileName);
                                     Platform.runLater(() -> appendLog(logMsg));
                                 }
                             } else {
@@ -1059,8 +1132,7 @@ public class SumCompareController {
                                 org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
                                         props.isPreserveFileDate());
                                 String fileName = thisSourceFile.getName();
-                                String logMsg = String.format("Organized [%s]: %s (%s)",
-                                        fileTypeDesc, fileName, metadata.getSummary());
+                                String logMsg = String.format("Organized [%s]", fileName);
                                 Platform.runLater(() -> appendLog(logMsg));
                             }
                         }
@@ -1085,18 +1157,18 @@ public class SumCompareController {
                                 File renamedFile = new File(sourceFileObj.getParent(), newFileName);
 
                                 if (props.isDryRun()) {
-                                    String logMsg = String.format("Would rename duplicate [%s]: %s -> %s (%s)",
-                                            fileTypeDesc, sourceFileName, newFileName, metadata.getSummary());
+                                    String logMsg = String.format("Would rename duplicate [%s]: %s -> %s ",
+                                            sourceFileName, newFileName);
                                     Platform.runLater(() -> appendLog(logMsg));
                                 } else {
                                     // Actually rename the file
                                     if (sourceFileObj.renameTo(renamedFile)) {
-                                        String logMsg = String.format("Renamed duplicate [%s]: %s -> %s (%s)",
-                                                fileTypeDesc, sourceFileName, newFileName, metadata.getSummary());
+                                        String logMsg = String.format("Renamed duplicate [%s]: %s -> %s ",
+                                                sourceFileName, newFileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     } else {
-                                        String logMsg = String.format("Failed to rename [%s]: %s (%s)",
-                                                fileTypeDesc, sourceFileName, metadata.getSummary());
+                                        String logMsg = String.format("Failed to rename [%s]: %s ",
+                                                sourceFileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     }
                                 }
@@ -1106,22 +1178,22 @@ public class SumCompareController {
                                 if (sourceFileName.equals(targetFileName)) {
                                     MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                                 } else {
-                                    String logMsg = String.format("Duplicate [%s]: %s -> %s (%s)",
-                                            fileTypeDesc, sourceFileName, existingFile, metadata.getSummary());
+                                    String logMsg = String.format("Duplicate [%s]: %s -> %s ",
+                                            sourceFileName, existingFile);
                                     Platform.runLater(() -> appendLog(logMsg));
                                     MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                                 }
                             }
                         } else {
                             // File needs to be copied
-                            String targetPath = calculateTargetPath(sourceFile, props);
+                            String targetPath = calculateTargetPath(fileMetadata, props);
                             CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
 
                             if (props.isDryRun()) {
                                 String fileName = thisSourceFile.getName();
                                 String action = props.isMoveInsteadOfCopy() ? "move" : "copy";
-                                String logMsg = String.format("Would %s [%s]: %s (%s)",
-                                        action, fileTypeDesc, fileName, metadata.getSummary());
+                                String logMsg = String.format("Would %s [%s]: %s ",
+                                        action, fileName);
                                 Platform.runLater(() -> appendLog(logMsg));
                             } else {
                                 File targetFile = new File(targetPath);
@@ -1139,15 +1211,15 @@ public class SumCompareController {
                                     if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
                                         String fileName = thisSourceFile.getName();
                                         String action = props.isPermanentlyDelete() ? "deleted" : "to trash";
-                                        String logMsg = String.format("Moved (%s) [%s]: %s (%s)",
-                                                action, fileTypeDesc, fileName, metadata.getSummary());
+                                        String logMsg = String.format("Moved (%s) [%s]: %s ",
+                                                action, fileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     } else {
                                         String fileName = thisSourceFile.getName();
                                         String action = props.isPermanentlyDelete() ? "delete" : "trash";
                                         String logMsg = String.format(
-                                                "Copied but failed to %s source [%s]: %s (%s)",
-                                                action, fileTypeDesc, fileName, metadata.getSummary());
+                                                "Copied but failed to %s source [%s]: %s ",
+                                                action, fileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     }
                                 } else {
@@ -1156,7 +1228,7 @@ public class SumCompareController {
                                             props.isPreserveFileDate());
                                     String fileName = thisSourceFile.getName();
                                     String logMsg = String.format("Copied [%s]: %s (%s)",
-                                            fileTypeDesc, fileName, metadata.getSummary());
+                                            fileName);
                                     Platform.runLater(() -> appendLog(logMsg));
                                 }
                             }
@@ -1179,37 +1251,38 @@ public class SumCompareController {
         latch.await();
     }
 
-    private String calculateTargetPath(String sourceFile, PropertiesObject props) {
-        String targetFileName = FileUtilsLocal.getFileName(sourceFile);
+    // FIXME: This method is where I need to validate functionality
+    private String calculateTargetPath(FileMetadata fileMetadata, PropertiesObject props) {
+
+        File sourceFile = new File(fileMetadata.getAbsolutePath());
+        File targetFile = new File(props.getTargetLocation(), sourceFile.getName());
 
         // Use date-based folder organization if enabled
         if (props.isOrganizeDateFolders()) {
             try {
-                File thisSourceFile = new File(sourceFile);
-                // Use custom date target directory if specified, otherwise use source directory
-                String dateTargetLocation = props.getDateTargetDirectory() != null
-                        ? props.getDateTargetDirectory()
-                        : props.getSourceLocation();
-                File baseTargetDir = new File(dateTargetLocation);
-                File targetFile = org.bofus.sumcompare.localutil.DateFolderOrganizer.generateDateBasedTargetPath(
-                        thisSourceFile,
+                File baseTargetDir = new File(fileMetadata.getDateTargetLocation());
+
+                targetFile = org.bofus.sumcompare.localutil.DateFolderOrganizer.generateDateBasedTargetPath(
+                        sourceFile,
                         baseTargetDir,
                         props.getDateSource(),
                         props.getDatePattern(),
                         props.isKeepSourceStructure(),
-                        props.isUseMetadata());
+                        props.isUseMetadata(),
+                        fileMetadata);
+
                 return targetFile.getAbsolutePath();
             } catch (Exception e) {
                 log.error("Error generating date-based path for {}, falling back to standard path", sourceFile, e);
                 // Fallback to standard logic
-                return props.getTargetLocation() + File.separator + targetFileName;
+                return props.getTargetLocation() + File.separator + targetFile.getName();
             }
         } else if (props.isKeepSourceStructure()) {
-            String sourceBasePath = sourceFile.replace(props.getSourceLocation(), "");
+            String sourceBasePath = sourceFile.getAbsolutePath().replace(props.getSourceLocation(), "");
             String tempPath = org.apache.commons.io.FilenameUtils.getPath(sourceBasePath);
-            return props.getTargetLocation() + File.separator + tempPath + File.separator + targetFileName;
+            return props.getTargetLocation() + File.separator + tempPath + File.separator + targetFile.getName();
         } else {
-            return props.getTargetLocation() + File.separator + targetFileName;
+            return props.getTargetLocation() + File.separator + targetFile.getName();
         }
     }
 
@@ -1236,7 +1309,7 @@ public class SumCompareController {
     }
 
     private void stopElapsedTimeUpdater() {
-        if (timerTask != null && timerTask.isRunning()) {
+        if (null != timerTask && timerTask.isRunning()) {
             timerTask.cancel();
         }
     }
@@ -1260,7 +1333,7 @@ public class SumCompareController {
     private void updateModeStatusLabel() {
         Platform.runLater(() -> {
             boolean sourceDuplicateMode = sourceDuplicateCheckBox.isSelected();
-            boolean dateFoldersMode = dateFoldersCheckBox != null && dateFoldersCheckBox.isSelected();
+            boolean dateFoldersMode = null != dateFoldersCheckBox && dateFoldersCheckBox.isSelected();
 
             if (sourceDuplicateMode && dateFoldersMode) {
                 // Date-Sort-Only Mode
@@ -1341,7 +1414,7 @@ public class SumCompareController {
         // Don't delete the root source directory itself
         if (directory.equals(rootDir)) {
             File[] children = directory.listFiles();
-            if (children != null) {
+            if (null != children) {
                 for (File child : children) {
                     if (child.isDirectory()) {
                         deletedCount += deleteEmptyFoldersRecursive(child, rootDir);
@@ -1353,7 +1426,7 @@ public class SumCompareController {
 
         // First, recursively process subdirectories
         File[] children = directory.listFiles();
-        if (children != null) {
+        if (null != children) {
             for (File child : children) {
                 if (child.isDirectory()) {
                     deletedCount += deleteEmptyFoldersRecursive(child, rootDir);
@@ -1363,7 +1436,7 @@ public class SumCompareController {
 
         // After processing children, check if this directory is now empty
         children = directory.listFiles();
-        if (children != null && children.length == 0) {
+        if (null != children && children.length == 0) {
             if (directory.delete()) {
                 log.trace("Deleted empty folder: {}", directory.getAbsolutePath());
                 deletedCount++;
@@ -1375,9 +1448,9 @@ public class SumCompareController {
 
     private void updateStartButtonState() {
         Platform.runLater(() -> {
-            boolean hasSource = sourceTextField.getText() != null && !sourceTextField.getText().trim().isEmpty();
-            boolean hasTarget = targetTextField.getText() != null && !targetTextField.getText().trim().isEmpty();
-            boolean hasAlgorithm = algorithmComboBox.getValue() != null;
+            boolean hasSource = null != sourceTextField.getText() && !sourceTextField.getText().trim().isEmpty();
+            boolean hasTarget = null != targetTextField.getText() && !targetTextField.getText().trim().isEmpty();
+            boolean hasAlgorithm = null != algorithmComboBox.getValue();
             boolean isSourceDuplicateMode = sourceDuplicateCheckBox.isSelected();
 
             // Valid if: has source, has algorithm, and (has target OR is in source
@@ -1396,13 +1469,13 @@ public class SumCompareController {
 
     private void appendLog(String message) {
         Platform.runLater(() -> {
-            if (logTextArea != null) {
+            if (null != logTextArea) {
                 logTextArea.appendText(message + "\n");
             }
         });
 
         // Also log to file if file logging is enabled
-        if (writeLogToFileCheckBox != null && writeLogToFileCheckBox.isSelected()) {
+        if (null != writeLogToFileCheckBox && writeLogToFileCheckBox.isSelected()) {
             log.info("[UI] {}", message);
         }
     }
@@ -1466,14 +1539,14 @@ public class SumCompareController {
 
             // Remove existing file appender if present
             ch.qos.logback.core.Appender<?> existingAppender = rootLogger.getAppender("FILE");
-            if (existingAppender != null) {
+            if (null != existingAppender) {
                 existingAppender.stop();
                 rootLogger.detachAppender("FILE");
             }
 
             if (enabled) {
                 // Get log directory from field or use default
-                String logDir = logDirectoryField != null && !logDirectoryField.getText().isEmpty()
+                String logDir = null != logDirectoryField && !logDirectoryField.getText().isEmpty()
                         ? logDirectoryField.getText()
                         : System.getProperty("user.home") + "/.sumcompare/logs";
 
