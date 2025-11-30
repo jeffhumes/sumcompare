@@ -121,6 +121,8 @@ public class SumCompareController {
 
     @FXML
     public void initialize() {
+        progressBar.setProgress(0.001);
+
         // Populate algorithm choices
         algorithmComboBox.getItems().addAll("XXHASH64", "XXHASH32", "SHA1", "MD5");
 
@@ -243,34 +245,6 @@ public class SumCompareController {
             });
         }
 
-        // UISelectorsObjectSingleton uiSelectorObject =
-        // UISelectorsObjectSingleton.getInstance();
-
-        // uiSelectorObject.setAlgorithmComboBox(algorithmComboBox);
-        // uiSelectorObject.setSourceTextField(sourceTextField);
-        // uiSelectorObject.setTargetTextField(targetTextField);
-        // uiSelectorObject.setTargetBrowseButton(targetBrowseButton);
-        // uiSelectorObject.setThreadCountSpinner(threadCountSpinner);
-        // uiSelectorObject.setDryRunCheckBox(dryRunCheckBox);
-        // uiSelectorObject.setKeepStructureCheckBox(keepStructureCheckBox);
-        // uiSelectorObject.setBackupCheckBox(backupCheckBox);
-        // uiSelectorObject.setPreserveDateCheckBox(preserveDateCheckBox);
-        // uiSelectorObject.setCreateReportCheckBox(createReportCheckBox);
-        // uiSelectorObject.setWriteLogToFileCheckBox(writeLogToFileCheckBox);
-        // uiSelectorObject.setLogDirectoryField(logDirectoryField);
-        // uiSelectorObject.setLogDirectoryBrowseButton(logDirectoryBrowseButton);
-        // uiSelectorObject.setStartButton(startButton);
-        // uiSelectorObject.setCancelButton(cancelButton);
-        // uiSelectorObject.setProgressBar(progressBar);
-        // uiSelectorObject.setStatusLabel(statusLabel);
-        // uiSelectorObject.setScannedCountLabel(scannedCountLabel);
-        // uiSelectorObject.setCopiedCountLabel(copiedCountLabel);
-        // uiSelectorObject.setDuplicatesCountLabel(duplicatesCountLabel);
-        // uiSelectorObject.setElapsedTimeLabel(elapsedTimeLabel);
-
-        // // Initialize progress bar to 0
-        // uiSelectorObject.getProgressBar().setProgress(0.0);
-
         // Clear statistics
         resetStatistics();
 
@@ -296,7 +270,7 @@ public class SumCompareController {
         // Initial validation
         updateStartButtonState();
 
-        log.info("SumCompareController initialized");
+        log.debug("SumCompareController initialized");
 
     }
 
@@ -872,6 +846,9 @@ public class SumCompareController {
 
                     updateMessage("Directory scanning completed");
 
+                    updateMessage(
+                            "Found " + SourceFileArraySingleton.getInstance().getArray().size() + " files in source");
+
                     // NOTE: CHECKED TO THIS POINT - ALL GOOD
                     // Step 5: Process source files
                     updateMessage("Processing files...");
@@ -1119,7 +1096,7 @@ public class SumCompareController {
                                     String fileName = thisSourceFile.getName();
                                     String action = props.isPermanentlyDelete() ? "Moved (deleted)"
                                             : "Moved (to trash)";
-                                    String logMsg = String.format("%s [%s]: %s", action, fileName);
+                                    String logMsg = String.format("%s %s", action, fileName);
                                     Platform.runLater(() -> appendLog(logMsg));
                                 } else {
                                     String fileName = thisSourceFile.getName();
@@ -1157,13 +1134,13 @@ public class SumCompareController {
                                 File renamedFile = new File(sourceFileObj.getParent(), newFileName);
 
                                 if (props.isDryRun()) {
-                                    String logMsg = String.format("Would rename duplicate [%s]: %s -> %s ",
+                                    String logMsg = String.format("Would rename duplicate %s -> %s ",
                                             sourceFileName, newFileName);
                                     Platform.runLater(() -> appendLog(logMsg));
                                 } else {
                                     // Actually rename the file
                                     if (sourceFileObj.renameTo(renamedFile)) {
-                                        String logMsg = String.format("Renamed duplicate [%s]: %s -> %s ",
+                                        String logMsg = String.format("Renamed duplicate %s -> %s ",
                                                 sourceFileName, newFileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     } else {
@@ -1178,7 +1155,7 @@ public class SumCompareController {
                                 if (sourceFileName.equals(targetFileName)) {
                                     MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                                 } else {
-                                    String logMsg = String.format("Duplicate [%s]: %s -> %s ",
+                                    String logMsg = String.format("Duplicate %s -> %s ",
                                             sourceFileName, existingFile);
                                     Platform.runLater(() -> appendLog(logMsg));
                                     MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
@@ -1192,7 +1169,7 @@ public class SumCompareController {
                             if (props.isDryRun()) {
                                 String fileName = thisSourceFile.getName();
                                 String action = props.isMoveInsteadOfCopy() ? "move" : "copy";
-                                String logMsg = String.format("Would %s [%s]: %s ",
+                                String logMsg = String.format("Would %s %s ",
                                         action, fileName);
                                 Platform.runLater(() -> appendLog(logMsg));
                             } else {
@@ -1208,17 +1185,18 @@ public class SumCompareController {
                                     // Move file: copy then delete source
                                     org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
                                             props.isPreserveFileDate());
+
                                     if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
                                         String fileName = thisSourceFile.getName();
                                         String action = props.isPermanentlyDelete() ? "deleted" : "to trash";
-                                        String logMsg = String.format("Moved (%s) [%s]: %s ",
+                                        String logMsg = String.format("Moved %s %s ",
                                                 action, fileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     } else {
                                         String fileName = thisSourceFile.getName();
                                         String action = props.isPermanentlyDelete() ? "delete" : "trash";
                                         String logMsg = String.format(
-                                                "Copied but failed to %s source [%s]: %s ",
+                                                "Copied but failed to %s source %s ",
                                                 action, fileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     }

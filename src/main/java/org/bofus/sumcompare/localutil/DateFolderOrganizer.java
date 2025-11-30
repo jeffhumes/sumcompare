@@ -87,55 +87,61 @@ public class DateFolderOrganizer {
 
         String dateTime = null;
         LocalDateTime localDateTime = null;
-        // Try to use media metadata if enabled and file is a supported media type
-        // TODO: move call to FileMetadataExtractor into utility method and use
-        // FileMetadata here
-        if (useMetadata && fileMetadata.isMediaFile()) {
-            try {
-                switch (dateSource) {
-                    case CREATED:
-                        dateTime = fileMetadata.getExifDigitizedDate();
-                        break;
-                    case ACCESSED:
-                        dateTime = fileMetadata.getExifOriginalDate();
-                        break;
-                    case MODIFIED:
-                        dateTime = fileMetadata.getExifModifiedDate();
-                        break;
-                    default:
-                        dateTime = fileMetadata.getExifOriginalDate();
-                        break;
-                }
 
-            } catch (Exception e) {
-                log.error("Could not extract metadata date for {}, falling back to file system: {}",
-                        file.getName(), e.getMessage());
+        if (useMetadata && null != fileMetadata) {
+
+            if (fileMetadata.isMediaFile()) {
+                try {
+                    if (null != dateSource) {
+                        log.debug("Extracting date from metadata for file: {} using source: {}", file.getName(),
+                                dateSource);
+                        if (dateSource == DateSource.CREATED) {
+                            dateTime = null != fileMetadata.getExifDigitizedDate() ? fileMetadata.getExifDigitizedDate()
+                                    : null;
+                        } else if (dateSource == DateSource.ACCESSED) {
+                            dateTime = null != fileMetadata.getExifOriginalDate() ? fileMetadata.getExifOriginalDate()
+                                    : null;
+                        } else if (dateSource == DateSource.MODIFIED) {
+                            dateTime = null != fileMetadata.getExifModifiedDate() ? fileMetadata.getExifModifiedDate()
+                                    : null;
+                        } else {
+                            dateTime = null != fileMetadata.getExifModifiedDate() ? fileMetadata.getExifModifiedDate()
+                                    : null;
+                        }
+                    }
+
+                } catch (Exception e) {
+                    log.error("Could not extract metadata date for {}, falling back to file system: {}",
+                            file.getName(), e.getMessage());
+                }
+            } else {
+
+                log.debug("Extracting date from metadata for file: {} using source: {}", file.getName(),
+                        dateSource);
+                if (dateSource == DateSource.CREATED) {
+                    dateTime = null != fileMetadata.getCreationTime() ? fileMetadata.getCreationTime() : null;
+                } else if (dateSource == DateSource.ACCESSED) {
+                    dateTime = null != fileMetadata.getLastAccessTime() ? fileMetadata.getLastAccessTime() : null;
+                } else if (dateSource == DateSource.MODIFIED) {
+                    dateTime = null != fileMetadata.getLastModifiedTime() ? fileMetadata.getLastModifiedTime() : null;
+                } else {
+                    dateTime = null != fileMetadata.getLastModifiedTime() ? fileMetadata.getLastModifiedTime() : null;
+                }
             }
+
+        } else {
+            log.debug("Using Last Modified Time for file: {}", file.getName());
+            dateTime = fileMetadata.getLastModifiedTime();
         }
 
-        // Fallback to file system metadata if no media metadata was found
-        if (dateTime == null) {
-
-            // Get the appropriate timestamp based on dateSource
-            String timestamp;
-            switch (dateSource) {
-                case CREATED:
-                    timestamp = fileMetadata.getCreationTime();
-                    break;
-                case ACCESSED:
-                    timestamp = fileMetadata.getLastAccessTime();
-                    break;
-                case MODIFIED:
-                    timestamp = fileMetadata.getLastModifiedTime();
-                    break;
-                default:
-                    timestamp = fileMetadata.getLastModifiedTime();
-                    break;
-            }
-
-            // Parse the timestamp
-            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            localDateTime = LocalDateTime.parse(timestamp, inputFormatter);
+        // Parse the timestamp
+        if (null != dateTime) {
+            DateTimeFormatter inputFormatter = DateTimeFormatter
+                    .ofPattern("yyyy-MM-dd HH:mm:ss");
+            localDateTime = LocalDateTime.parse(dateTime, inputFormatter);
+        } else {
+            log.warn("No date found for file: {}, using current date", file.getName());
+            localDateTime = LocalDateTime.now();
         }
 
         // Format according to pattern
@@ -146,7 +152,8 @@ public class DateFolderOrganizer {
             return localDateTime.getYear() + "-Q" + quarter;
         }
 
-        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(pattern.getPattern());
+        DateTimeFormatter outputFormatter = DateTimeFormatter
+                .ofPattern(pattern.getPattern());
         return localDateTime.format(outputFormatter);
     }
 
