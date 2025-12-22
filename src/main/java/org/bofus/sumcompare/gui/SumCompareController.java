@@ -524,7 +524,7 @@ public class SumCompareController {
     private void openLogWindow() {
         // If window already exists, just clear it and bring to front
         if (null != logWindowStage && logWindowStage.isShowing()) {
-            logTextArea.clear();
+            // logTextArea.clear();
             logWindowStage.toFront();
             return;
         }
@@ -770,88 +770,212 @@ public class SumCompareController {
             @Override
             protected Void call() throws Exception {
                 try {
-                    UISelectorsObjectSingleton uiSelectorObject = UISelectorsObjectSingleton.getInstance();
-
                     // PropertiesObject props = getProperties(uiSelectorObject);
                     PropertiesObject props = getProperties();
 
-                    updateMessage("Using comparison algorithm: " + props.getDigestType().getAlgorithm());
+                    Platform.runLater(() -> {
+                        appendLog("Using comparison algorithm: " + props.getDigestType().getAlgorithm());
+                    });
 
                     // Check if this is date-sort-only mode (no duplicate checking)
                     boolean dateSortOnlyMode = props.isSourceDuplicateCheckOnly() && props.isOrganizeDateFolders();
                     if (dateSortOnlyMode) {
-                        updateMessage("DATE SORT MODE: Organizing source files by date without duplicate checking");
+                        Platform.runLater(() -> {
+                            appendLog("DATE SORT MODE: Organizing source files by date without duplicate checking");
+                        });
                     } else if (props.isSourceDuplicateCheckOnly()) {
-                        updateMessage(
-                                "SOURCE DUPLICATE CHECK MODE: Only processing duplicates within source, no files will be copied");
+                        Platform.runLater(() -> {
+                            appendLog(
+                                    "SOURCE DUPLICATE CHECK MODE: Only processing duplicates within source, no files will be copied");
+                        });
                     }
 
                     // Step 1: Backup if requested (skip in dry run mode)
-                    if (props.isBackupFirst() && !props.isDryRun()) {
-                        updateMessage("Creating backup of source directory...");
-                        FileUtilsLocal.zipDirectory(props);
-                        updateMessage("Backup completed");
-                    } else if (props.isBackupFirst() && props.isDryRun()) {
-                        updateMessage("Skipping backup (dry run mode)");
+                    if (props.isDryRun()) {
+                        Platform.runLater(() -> {
+                            appendLog("Dry run mode enabled: No files will be copied or modified");
+                        });
+                        Platform.runLater(() -> {
+                            appendLog("Dry run mode enabled: Skipping backup");
+                        });
+                    } else {
+                        updateMessage("Dry run mode disabled: Files will be copied/modified as needed");
+                        if (props.isBackupFirst()) {
+                            Platform.runLater(() -> {
+                                appendLog(
+                                        "Backup requested: A backup of the source directory will be created before processing");
+                            });
+                            FileUtilsLocal.zipDirectory(props);
+                            Platform.runLater(() -> {
+                                appendLog("Files backed up successfully");
+                            });
+                        } else {
+                            Platform.runLater(() -> {
+                                appendLog("Backup not requested: Proceeding without backup");
+                            });
+                        }
+
                     }
 
-                    // Step 2 & 4: Scan target and source directories in parallel
-                    Thread targetScanThread = null;
+                    Thread targetScanThread = new Thread(() -> {
+                        try {
+                            // NOTE: if in source duplicate check only mode, we still need to scan the
+                            // source as the target
+
+                            if (props.isSourceDuplicateCheckOnly()) {
+                                FileUtilsLocal.getTargetDirectoryContentsArray(props.getSourceLocation());
+                            } else {
+                                FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
+                            }
+
+                            int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
+                            String targetItemCountMsg = "Found " + targetCount + " files in target";
+                            Platform.runLater(() -> {
+                                statusLabel.setText(targetItemCountMsg);
+                                appendLog(targetItemCountMsg);
+                            });
+
+                            // Step 3: Compute target checksums
+                            String targetItemCksumMsg = "Computing target checksums...";
+                            Platform.runLater(() -> {
+                                statusLabel.setText(targetItemCksumMsg);
+                                appendLog(targetItemCksumMsg);
+                            });
+
+                            FileUtilsLocal.createTargetFileChecksumMap(
+                                    TargetFileArraySingleton.getInstance(),
+                                    props.getDigestType());
+
+                            String targetItemCksumCompleteMsg = "Target checksums completed";
+                            Platform.runLater(() -> {
+                                statusLabel.setText(targetItemCksumCompleteMsg);
+                                appendLog(targetItemCksumCompleteMsg);
+                            });
+                        } catch (Exception e) {
+                            log.error("Error scanning target directory", e);
+                            String errorMsg = "ERROR scanning target: " + e.getMessage();
+                            Platform.runLater(() -> {
+                                statusLabel.setText(errorMsg);
+                                appendLog(errorMsg);
+                            });
+                        }
+                    });
+
                     Thread sourceScanThread = new Thread(() -> {
                         try {
                             FileUtilsLocal.getSourceDirectoryContentsArray(props.getSourceLocation());
                             int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
-                            updateMessage("Found " + sourceCount + " files in source");
-                            Platform.runLater(() -> updateScannedCount(sourceCount));
+                            String msg = "Source Location contains  " + sourceCount + " items";
+                            Platform.runLater(() -> {
+                                statusLabel.setText(msg);
+                                appendLog(msg);
+                                updateScannedCount(sourceCount);
+                            });
                         } catch (Exception e) {
                             log.error("Error scanning source directory", e);
-                            updateMessage("ERROR scanning source: " + e.getMessage());
+                            String errorMsg = "ERROR scanning source: " + e.getMessage();
+                            Platform.runLater(() -> {
+                                statusLabel.setText(errorMsg);
+                                appendLog(errorMsg);
+                            });
                         }
                     });
 
-                    if (props.isSourceDuplicateCheckOnly()) {
-                        updateMessage("Source duplicate check mode: Target directory scan skipped");
-                    } else {
-                        targetScanThread = new Thread(() -> {
-                            try {
-                                FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
-                                int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
-                                updateMessage("Found " + targetCount + " files in target");
+                    // if (props.isSourceDuplicateCheckOnly()) {
+                    // //FIXME: Should we actually use source as target in source duplicate check
+                    // mode?
+                    // //FIXME: we will need to do a cksum map for source as well then
+                    // Platform.runLater(() -> {
+                    // appendLog("Source duplicate check mode: Skipping target directory scan");
+                    // });
+                    // } else {
+                    // targetScanThread = new Thread(() -> {
+                    // try {
+                    // // NOTE: if in source duplicate check only mode, we still need to scan the
+                    // // source as the target
 
-                                // Step 3: Compute target checksums
-                                updateMessage("Computing target checksums...");
-                                FileUtilsLocal.createTargetFileChecksumMap(
-                                        TargetFileArraySingleton.getInstance(),
-                                        props.getDigestType());
-                                updateMessage("Target checksums completed");
-                            } catch (Exception e) {
-                                log.error("Error scanning target directory", e);
-                                updateMessage("ERROR scanning target: " + e.getMessage());
-                            }
-                        });
-                    }
+                    // if (props.isSourceDuplicateCheckOnly()) {
+                    // FileUtilsLocal.getTargetDirectoryContentsArray(props.getSourceLocation());
+                    // } else {
+                    // FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
+                    // }
 
-                    // Start both threads in parallel
-                    updateMessage("Scanning directories in parallel...");
+                    // int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
+                    // String targetItemCountMsg = "Found " + targetCount + " files in target";
+                    // Platform.runLater(() -> {
+                    // statusLabel.setText(targetItemCountMsg);
+                    // appendLog(targetItemCountMsg);
+                    // });
+
+                    // // Step 3: Compute target checksums
+                    // String targetItemCksumMsg = "Computing target checksums...";
+                    // Platform.runLater(() -> {
+                    // statusLabel.setText(targetItemCksumMsg);
+                    // appendLog(targetItemCksumMsg);
+                    // });
+
+                    // FileUtilsLocal.createTargetFileChecksumMap(
+                    // TargetFileArraySingleton.getInstance(),
+                    // props.getDigestType());
+
+                    // String targetItemCksumCompleteMsg = "Target checksums completed";
+                    // Platform.runLater(() -> {
+                    // statusLabel.setText(targetItemCksumCompleteMsg);
+                    // appendLog(targetItemCksumCompleteMsg);
+                    // });
+                    // } catch (Exception e) {
+                    // log.error("Error scanning target directory", e);
+                    // String errorMsg = "ERROR scanning target: " + e.getMessage();
+                    // Platform.runLater(() -> {
+                    // statusLabel.setText(errorMsg);
+                    // appendLog(errorMsg);
+                    // });
+                    // }
+                    // });
+                    // }
+
                     sourceScanThread.start();
-                    if (!props.isSourceDuplicateCheckOnly()) {
-                        targetScanThread.start();
-                    }
+                    targetScanThread.start();
 
                     // Wait for both threads to complete before proceeding
+                    String sourceScanWaitMsg = "Waiting for source directory scan to complete...";
+                    log.debug(sourceScanWaitMsg);
+                    Platform.runLater(() -> {
+                        appendLog(sourceScanWaitMsg);
+                    });
+
+                    String targetScanWaitMsg = "Waiting for target directory scan to complete...";
+                    log.debug(targetScanWaitMsg);
+                    Platform.runLater(() -> {
+                        appendLog(targetScanWaitMsg);
+                    });
+
                     sourceScanThread.join();
-                    if (!props.isSourceDuplicateCheckOnly()) {
-                        targetScanThread.join();
-                    }
+                    String sourceScanCompleteMsg = "Source scan thread completed";
+                    log.debug(sourceScanCompleteMsg);
+                    Platform.runLater(() -> {
+                        appendLog(sourceScanCompleteMsg);
+                    });
 
-                    updateMessage("Directory scanning completed");
+                    targetScanThread.join();
+                    String targetScanCompleteMsg = "Target scan thread completed";
+                    log.debug(targetScanCompleteMsg);
+                    Platform.runLater(() -> {
+                        appendLog(targetScanCompleteMsg);
+                    });
 
-                    updateMessage(
-                            "Found " + SourceFileArraySingleton.getInstance().getArray().size() + " files in source");
+                    // int sourceFileCount =
+                    // SourceFileArraySingleton.getInstance().getArray().size();
+                    // Platform.runLater(() -> {
+                    // appendLog(
+                    // "Found " + sourceFileCount + " files in source");
+                    // });
 
-                    // NOTE: CHECKED TO THIS POINT - ALL GOOD
                     // Step 5: Process source files
-                    updateMessage("Processing files...");
+                    Platform.runLater(() -> {
+                        appendLog("Beginning to process source files...");
+                    });
+
                     processSourceFiles(props);
 
                     // Step 6: Generate report if requested
@@ -1052,7 +1176,6 @@ public class SumCompareController {
 
                     log.debug("attempting to get file metadata for: {}", thisSourceFile.getAbsolutePath());
                     FileMetadata fileMetadata = new FileMetadata();
-                    // fileMetadata = FileMetadataExtractor.getFileMetaInformation(fileMetadata);
 
                     try {
                         fileMetadata = FileMetadataExtractor.getFileMetadata(thisSourceFile, props);
@@ -1073,55 +1196,60 @@ public class SumCompareController {
                     // NOTE: CONTINUE HERE
                     // In date-sort-only mode, skip duplicate checking and just organize files
                     if (dateSortOnlyMode) {
-                        // Just copy/organize the file without any duplicate checking
+                        // Just copy/organize the files without any duplicate checking
                         String targetPath = calculateTargetPath(fileMetadata, props);
                         CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
 
-                        if (props.isDryRun()) {
-                            String fileName = thisSourceFile.getName();
-                            String action = props.isMoveInsteadOfCopy() ? "move and organize" : "organize";
-                            String logMsg = String.format("Would %s %s", action, fileName);
-                            Platform.runLater(() -> appendLog(logMsg));
-                        } else {
-                            File targetFile = new File(targetPath);
+                        // if (props.isDryRun()) {
+                        // String fileName = thisSourceFile.getName();
+                        // String action = props.isMoveInsteadOfCopy() ? "move and organize" :
+                        // "organize";
+                        // String logMsg = String.format("Would %s %s", action, fileName);
+                        // Platform.runLater(() -> appendLog(logMsg));
+                        // } else {
+                        File targetFile = new File(targetPath);
 
-                            // Ensure date-based folder exists before copying
-                            org.bofus.sumcompare.localutil.DateFolderOrganizer.ensureDateFolderExists(targetFile);
+                        // Ensure date-based folder exists before copying
+                        org.bofus.sumcompare.localutil.DateFolderOrganizer.ensureDateFolderExists(targetFile,
+                                props.isDryRun());
 
-                            if (props.isMoveInsteadOfCopy()) {
-                                // Move file: copy then delete/trash source
-                                org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                        props.isPreserveFileDate());
-                                if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
-                                    String fileName = thisSourceFile.getName();
-                                    String action = props.isPermanentlyDelete() ? "Moved (deleted)"
-                                            : "Moved (to trash)";
-                                    String logMsg = String.format("%s %s", action, fileName);
-                                    Platform.runLater(() -> appendLog(logMsg));
-                                } else {
-                                    String fileName = thisSourceFile.getName();
-                                    String logMsg = String.format("Copied but failed to delete source [%s]: %s",
-                                            fileName);
-                                    Platform.runLater(() -> appendLog(logMsg));
-                                }
-                            } else {
-                                // Normal copy
-                                org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                        props.isPreserveFileDate());
+                        if (props.isMoveInsteadOfCopy()) {
+                            // Move file: copy then delete/trash source
+                            org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
+                                    props.isPreserveFileDate());
+                            if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
                                 String fileName = thisSourceFile.getName();
-                                String logMsg = String.format("Organized [%s]", fileName);
+                                String action = props.isPermanentlyDelete() ? "Moved (deleted)"
+                                        : "Moved (to trash)";
+                                String logMsg = String.format("%s %s", action, fileName);
+                                Platform.runLater(() -> appendLog(logMsg));
+                            } else {
+                                String fileName = thisSourceFile.getName();
+                                String logMsg = String.format("Copied but failed to delete source [%s]: %s",
+                                        fileName);
                                 Platform.runLater(() -> appendLog(logMsg));
                             }
+                        } else {
+                            // Normal copy
+                            org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
+                                    props.isPreserveFileDate());
+                            String fileName = thisSourceFile.getName();
+                            String logMsg = String.format("Organized [%s]", fileName);
+                            Platform.runLater(() -> appendLog(logMsg));
                         }
+                        // }
 
                         updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
                     } else {
                         // Normal mode: check for duplicates
                         MessageDigest threadDigest = (MessageDigest) props.getDigestType().clone();
-                        String checksum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
+                        String sourceCheckSum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
 
-                        if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(checksum)) {
-                            String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(checksum);
+                        List<String> existingFiles = FileUtilsLocal
+                                .getKeysWithValue(TargetFileHashMapSingleton.getInstance().getMap(), sourceCheckSum);
+
+                        if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(sourceCheckSum)) {
+                            String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(sourceCheckSum);
                             String sourceFileName = FileUtilsLocal.getFileName(sourceFile);
                             String targetFileName = FileUtilsLocal.getFileName(existingFile);
 
@@ -1178,7 +1306,7 @@ public class SumCompareController {
                                 // Ensure date-based folder exists before copying
                                 if (props.isOrganizeDateFolders()) {
                                     org.bofus.sumcompare.localutil.DateFolderOrganizer
-                                            .ensureDateFolderExists(targetFile);
+                                            .ensureDateFolderExists(targetFile, props.isDryRun());
                                 }
 
                                 if (props.isMoveInsteadOfCopy()) {

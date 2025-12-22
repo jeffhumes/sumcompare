@@ -9,6 +9,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipOutputStream;
@@ -156,6 +160,9 @@ public class FileUtilsLocal {
     }
   }
 
+  // FIXME: need to update maps to be <Filename, Checksum> instead of <Checksum,
+  // Filename>
+  // this will allow checking if more than one duplicate exists
   public static void createTargetFileChecksumMap(
       TargetFileArraySingleton targetFileArray, MessageDigest digestType)
       throws IOException, SQLException, PropertyVetoException {
@@ -170,7 +177,9 @@ public class FileUtilsLocal {
 
         // Synchronized access to shared HashMap
         synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
-          if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(thisFileChecksum)) {
+          if (TargetFileHashMapSingleton.getInstance().getMap().containsValue(thisFileChecksum)) {
+
+            // TODO: change to get all existing files for this checksum (into a list?)
             String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
             log.trace(
                 String.format(
@@ -200,6 +209,15 @@ public class FileUtilsLocal {
             "Hashmap size for duplicate/existing target files: %s",
             ExistingTargetFileObjectArraySingleton.getInstance().getArray().size()));
   }
+
+  public static List<String> getKeysWithValue(Map<String, String> map, String value) {
+    return map
+        .entrySet()
+        .stream()
+        .filter(e -> Objects.equals(e.getValue(), value))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toList());
+  };
 
   public static String getFilePath(String file) {
     String filePathString = null;
