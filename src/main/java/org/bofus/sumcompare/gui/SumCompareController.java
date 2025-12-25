@@ -28,13 +28,14 @@ import org.bofus.sumcompare.singletons.*;
 import java.io.File;
 import java.io.IOException;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static org.bofus.sumcompare.gui.LogAppenderUI.appendLog;
 
 /**
  * Controller for the SumCompare GUI.
@@ -289,7 +290,6 @@ public class SumCompareController {
         File selected = chooser.showDialog(getStage());
         if (null != selected) {
             sourceTextField.setText(selected.getAbsolutePath());
-            appendLog("Source directory selected: " + selected.getAbsolutePath());
         }
     }
 
@@ -308,7 +308,6 @@ public class SumCompareController {
         File selected = chooser.showDialog(getStage());
         if (null != selected) {
             targetTextField.setText(selected.getAbsolutePath());
-            appendLog("Target directory selected: " + selected.getAbsolutePath());
         }
     }
 
@@ -327,7 +326,7 @@ public class SumCompareController {
         File selected = chooser.showDialog(getStage());
         if (null != selected) {
             logDirectoryField.setText(selected.getAbsolutePath());
-            appendLog("Log directory changed to: " + selected.getAbsolutePath());
+            // appendLog("Log directory changed to: " + selected.getAbsolutePath());
 
             // Reconfigure the file appender with new location
             if (writeLogToFileCheckBox.isSelected()) {
@@ -358,7 +357,6 @@ public class SumCompareController {
         File selected = chooser.showDialog(getStage());
         if (null != selected) {
             dateTargetField.setText(selected.getAbsolutePath());
-            appendLog("Date target directory selected: " + selected.getAbsolutePath());
         }
     }
 
@@ -393,7 +391,9 @@ public class SumCompareController {
             return;
         }
 
-        if (!targetDir.exists() || !targetDir.isDirectory()) {
+        // NOTE: dont bother checking if tartget is valid if in source duplicate check
+        // mode
+        if (!targetDir.exists() || !targetDir.isDirectory() && !sourceDir.getName().equals(targetDir.getName())) {
             showError("Target directory does not exist or is not a directory");
             return;
         }
@@ -538,6 +538,9 @@ public class SumCompareController {
         logTextArea.setEditable(false);
         logTextArea.setWrapText(true);
         logTextArea.setStyle("-fx-font-family: 'Courier New', monospace; -fx-font-size: 12px;");
+
+        // Set the static reference for LogAppenderUI to use
+        LogAppenderUI.logTextArea = logTextArea;
 
         // Create layout
         VBox vbox = new VBox(10);
@@ -760,6 +763,7 @@ public class SumCompareController {
         alert.showAndWait();
     }
 
+    // FIXME: This method is HUGE - break it up into smaller methods
     private void startComparisonTask() {
         startTime = Instant.now();
         enableControls(false);
@@ -770,62 +774,90 @@ public class SumCompareController {
             @Override
             protected Void call() throws Exception {
                 try {
-                    // PropertiesObject props = getProperties(uiSelectorObject);
-                    PropertiesObject props = getProperties();
+                    // Populate singleton propertiesObject from UI
+                    PropertiesObject propertiesObject = PropertiesObject.getInstance();
+                    propertiesObject.populateFromController(
+                            sourceTextField,
+                            targetTextField,
+                            dryRunCheckBox,
+                            keepStructureCheckBox,
+                            backupCheckBox,
+                            preserveDateCheckBox,
+                            createReportCheckBox,
+                            sourceDuplicateCheckBox,
+                            useMetadataCheckBox,
+                            renameDuplicatesCheckBox,
+                            duplicatePrefixField,
+                            deleteEmptyFoldersCheckBox,
+                            moveFilesCheckBox,
+                            permanentlyDeleteCheckBox,
+                            dateFoldersCheckBox,
+                            dateSourceComboBox,
+                            datePatternComboBox,
+                            dateTargetField,
+                            algorithmComboBox,
+                            threadCountSpinner);
 
                     Platform.runLater(() -> {
-                        appendLog("Using comparison algorithm: " + props.getDigestType().getAlgorithm());
+                        appendLog(
+                                "Using comparison algorithm: "
+                                        + PropertiesObject.getInstance().getDigestType().getAlgorithm());
                     });
 
-                    // Check if this is date-sort-only mode (no duplicate checking)
-                    boolean dateSortOnlyMode = props.isSourceDuplicateCheckOnly() && props.isOrganizeDateFolders();
-                    if (dateSortOnlyMode) {
-                        Platform.runLater(() -> {
-                            appendLog("DATE SORT MODE: Organizing source files by date without duplicate checking");
-                        });
-                    } else if (props.isSourceDuplicateCheckOnly()) {
-                        Platform.runLater(() -> {
-                            appendLog(
-                                    "SOURCE DUPLICATE CHECK MODE: Only processing duplicates within source, no files will be copied");
-                        });
-                    }
+                    // // Check if this is date-sort-only mode (no duplicate checking)
+                    // if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly() &&
+                    // PropertiesObject.getInstance().isOrganizeDateFolders()) {
+                    // Platform.runLater(() -> {
+                    // appendLog("DATE SORT MODE: Organizing source files by date without duplicate
+                    // checking");
+                    // });
+                    // } else if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()) {
+                    // Platform.runLater(() -> {
+                    // appendLog(
+                    // "SOURCE DUPLICATE CHECK MODE: Only processing duplicates within source, no
+                    // files will be copied");
+                    // });
+                    // }
 
                     // Step 1: Backup if requested (skip in dry run mode)
-                    if (props.isDryRun()) {
+                    // if (PropertiesObject.getInstance().isDryRun()) {
+                    // Platform.runLater(() -> {
+                    // appendLog("Dry run mode enabled: No files will be copied or modified");
+                    // });
+                    // Platform.runLater(() -> {
+                    // appendLog("Dry run mode enabled: Skipping backup");
+                    // });
+                    // } else {
+                    // updateMessage("Dry run mode disabled: Files will be copied/modified as
+                    // needed");
+                    if (PropertiesObject.getInstance().isBackupFirst()) {
                         Platform.runLater(() -> {
-                            appendLog("Dry run mode enabled: No files will be copied or modified");
+                            appendLog(
+                                    "Backup requested: A backup of the source directory will be created before processing");
                         });
+                        FileUtilsLocal.zipDirectory(PropertiesObject.getInstance());
                         Platform.runLater(() -> {
-                            appendLog("Dry run mode enabled: Skipping backup");
+                            appendLog("Files backed up successfully");
                         });
                     } else {
-                        updateMessage("Dry run mode disabled: Files will be copied/modified as needed");
-                        if (props.isBackupFirst()) {
-                            Platform.runLater(() -> {
-                                appendLog(
-                                        "Backup requested: A backup of the source directory will be created before processing");
-                            });
-                            FileUtilsLocal.zipDirectory(props);
-                            Platform.runLater(() -> {
-                                appendLog("Files backed up successfully");
-                            });
-                        } else {
-                            Platform.runLater(() -> {
-                                appendLog("Backup not requested: Proceeding without backup");
-                            });
-                        }
-
+                        Platform.runLater(() -> {
+                            appendLog("Backup not requested: Proceeding without backup");
+                        });
                     }
+
+                    // }
 
                     Thread targetScanThread = new Thread(() -> {
                         try {
                             // NOTE: if in source duplicate check only mode, we still need to scan the
                             // source as the target
 
-                            if (props.isSourceDuplicateCheckOnly()) {
-                                FileUtilsLocal.getTargetDirectoryContentsArray(props.getSourceLocation());
+                            if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()) {
+                                FileUtilsLocal.getTargetDirectoryContentsArray(
+                                        PropertiesObject.getInstance().getSourceLocation());
                             } else {
-                                FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
+                                FileUtilsLocal.getTargetDirectoryContentsArray(
+                                        PropertiesObject.getInstance().getTargetLocation());
                             }
 
                             int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
@@ -844,7 +876,7 @@ public class SumCompareController {
 
                             FileUtilsLocal.createTargetFileChecksumMap(
                                     TargetFileArraySingleton.getInstance(),
-                                    props.getDigestType());
+                                    PropertiesObject.getInstance().getDigestType());
 
                             String targetItemCksumCompleteMsg = "Target checksums completed";
                             Platform.runLater(() -> {
@@ -863,7 +895,8 @@ public class SumCompareController {
 
                     Thread sourceScanThread = new Thread(() -> {
                         try {
-                            FileUtilsLocal.getSourceDirectoryContentsArray(props.getSourceLocation());
+                            FileUtilsLocal.getSourceDirectoryContentsArray(
+                                    PropertiesObject.getInstance().getSourceLocation());
                             int sourceCount = SourceFileArraySingleton.getInstance().getArray().size();
                             String msg = "Source Location contains  " + sourceCount + " items";
                             Platform.runLater(() -> {
@@ -881,7 +914,7 @@ public class SumCompareController {
                         }
                     });
 
-                    // if (props.isSourceDuplicateCheckOnly()) {
+                    // if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()) {
                     // //FIXME: Should we actually use source as target in source duplicate check
                     // mode?
                     // //FIXME: we will need to do a cksum map for source as well then
@@ -894,10 +927,10 @@ public class SumCompareController {
                     // // NOTE: if in source duplicate check only mode, we still need to scan the
                     // // source as the target
 
-                    // if (props.isSourceDuplicateCheckOnly()) {
-                    // FileUtilsLocal.getTargetDirectoryContentsArray(props.getSourceLocation());
+                    // if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()) {
+                    // FileUtilsLocal.getTargetDirectoryContentsArray(PropertiesObject.getInstance().getSourceLocation());
                     // } else {
-                    // FileUtilsLocal.getTargetDirectoryContentsArray(props.getTargetLocation());
+                    // FileUtilsLocal.getTargetDirectoryContentsArray(PropertiesObject.getInstance().getTargetLocation());
                     // }
 
                     // int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
@@ -916,7 +949,7 @@ public class SumCompareController {
 
                     // FileUtilsLocal.createTargetFileChecksumMap(
                     // TargetFileArraySingleton.getInstance(),
-                    // props.getDigestType());
+                    // PropertiesObject.getInstance().getDigestType());
 
                     // String targetItemCksumCompleteMsg = "Target checksums completed";
                     // Platform.runLater(() -> {
@@ -976,10 +1009,10 @@ public class SumCompareController {
                         appendLog("Beginning to process source files...");
                     });
 
-                    processSourceFiles(props);
+                    processSourceFiles();
 
                     // Step 6: Generate report if requested
-                    if (props.isCreateOutputFile()) {
+                    if (PropertiesObject.getInstance().isCreateOutputFile()) {
                         updateMessage("Generating Excel report...");
                         ReportUtils.createOutputExcel();
                         updateMessage("Report created: Copy_Output.xlsx");
@@ -992,7 +1025,7 @@ public class SumCompareController {
                     updateDuplicatesCount(duplicates);
 
                     // Delete empty folders in source if enabled
-                    deleteEmptyFolders(props.getSourceLocation(), props);
+                    deleteEmptyFolders(PropertiesObject.getInstance().getSourceLocation());
 
                     updateMessage("\n=== COMPLETED SUCCESSFULLY ===");
                     updateMessage("Files copied: " + copied);
@@ -1059,111 +1092,11 @@ public class SumCompareController {
         thread.start();
     }
 
-    // private PropertiesObject getProperties(UISelectorsObjectSingleton
-    // uiSelectorObject) {
-    private PropertiesObject getProperties() {
-        PropertiesObject props = new PropertiesObject();
-
-        props.setSourceLocation(sourceTextField.getText());
-        props.setTargetLocation(targetTextField.getText());
-        props.setDryRun(dryRunCheckBox.isSelected());
-        props.setKeepSourceStructure(keepStructureCheckBox.isSelected());
-        props.setBackupFirst(backupCheckBox.isSelected());
-        props.setPreserveFileDate(preserveDateCheckBox.isSelected());
-        props.setCreateOutputFile(createReportCheckBox.isSelected());
-        props.setSourceDuplicateCheckOnly(sourceDuplicateCheckBox.isSelected());
-        props.setUseMetadata(null != useMetadataCheckBox && useMetadataCheckBox.isSelected());
-
-        // Set duplicate renaming options
-        props.setRenameDuplicates(
-                null != renameDuplicatesCheckBox && renameDuplicatesCheckBox.isSelected());
-
-        if (null != duplicatePrefixField && !duplicatePrefixField.getText().trim().isEmpty()) {
-            props.setDuplicatePrefix(duplicatePrefixField.getText().trim());
-        } else {
-            props.setDuplicatePrefix("DUPLICATE_FILE_");
-        }
-
-        // Set cleanup options
-        props.setDeleteEmptyFolders(
-                null != deleteEmptyFoldersCheckBox && deleteEmptyFoldersCheckBox.isSelected());
-
-        props.setMoveInsteadOfCopy(null != moveFilesCheckBox && moveFilesCheckBox.isSelected());
-
-        props.setPermanentlyDelete(
-                null != permanentlyDeleteCheckBox && permanentlyDeleteCheckBox.isSelected());
-
-        // Set date-based folder organization
-        if (null != dateFoldersCheckBox && dateFoldersCheckBox.isSelected()) {
-            props.setOrganizeDateFolders(true);
-
-            // Set date target directory (defaults to source if empty)
-            if (null != dateTargetField && !dateTargetField.getText().trim().isEmpty()) {
-                props.setDateTargetDirectory(dateTargetField.getText().trim());
-            } else {
-                // Default to source directory
-                props.setDateTargetDirectory(sourceTextField.getText());
-            }
-
-            // TODO: DEBUG HERE TO VALIDATE WORKING
-            // Set date source
-            if (null != dateSourceComboBox) {
-                String dateSourceStr = dateSourceComboBox.getValue();
-                // Extract enum name before the space (e.g., "MODIFIED (last changed)" ->
-                // "MODIFIED")
-                String enumName = dateSourceStr.contains(" ")
-                        ? dateSourceStr.substring(0, dateSourceStr.indexOf(" "))
-                        : dateSourceStr;
-                props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource
-                        .valueOf(enumName));
-            } else {
-                props.setDateSource(org.bofus.sumcompare.localutil.DateFolderOrganizer.DateSource.MODIFIED);
-            }
-
-            // TODO: DEBUG HERE TO VALIDATE WORKING
-            // Set date pattern
-            if (null != datePatternComboBox) {
-                String datePatternStr = datePatternComboBox.getValue();
-                // Extract enum name before the space (e.g., "YEAR_MONTH (2025-11)" ->
-                // "YEAR_MONTH")
-                String enumName = datePatternStr.contains(" ")
-                        ? datePatternStr.substring(0, datePatternStr.indexOf(" "))
-                        : datePatternStr;
-                props.setDatePattern(org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern
-                        .valueOf(enumName));
-            } else {
-                props.setDatePattern(
-                        org.bofus.sumcompare.localutil.DateFolderOrganizer.DatePattern.YEAR_MONTH);
-            }
-
-            String orgDescription = org.bofus.sumcompare.localutil.DateFolderOrganizer
-                    .getOrganizationDescription(
-                            props.getDateSource(), props.getDatePattern());
-        } else {
-            props.setOrganizeDateFolders(false);
-        }
-
-        // Set digest type
-        String algorithm = algorithmComboBox.getValue();
-        MessageDigest digest = null;
-        try {
-            digest = FileUtilsLocal.SetDigestType(algorithm);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        props.setDigestType(digest);
-
-        return props;
-    }
-
-    private void processSourceFiles(PropertiesObject props) throws Exception {
+    private void processSourceFiles() throws Exception {
         int threadCount = threadCountSpinner.getValue();
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         List<String> sourceFiles = SourceFileArraySingleton.getInstance().getArray();
         CountDownLatch latch = new CountDownLatch(sourceFiles.size());
-
-        // Check if this is date-sort-only mode (no duplicate checking)
-        boolean dateSortOnlyMode = props.isSourceDuplicateCheckOnly() && props.isOrganizeDateFolders();
 
         for (String sourceFile : sourceFiles) {
             executor.submit(() -> {
@@ -1172,14 +1105,16 @@ public class SumCompareController {
                         return;
                     }
 
+                    // Get the current file to be processed from the array
                     File thisSourceFile = new File(sourceFile);
 
+                    // Get the metadata for the current file
                     log.debug("attempting to get file metadata for: {}", thisSourceFile.getAbsolutePath());
                     FileMetadata fileMetadata = new FileMetadata();
 
                     try {
-                        fileMetadata = FileMetadataExtractor.getFileMetadata(thisSourceFile, props);
-                        log.debug("FileMetadata extracted: {}", fileMetadata);
+                        fileMetadata = FileMetadataExtractor.getFileMetadata(thisSourceFile,
+                                PropertiesObject.getInstance());
                         log.debug("completed getting file metadata for: {}",
                                 thisSourceFile.getName());
                     } catch (IOException e) {
@@ -1194,32 +1129,30 @@ public class SumCompareController {
                     }
 
                     // NOTE: CONTINUE HERE
-                    // In date-sort-only mode, skip duplicate checking and just organize files
-                    if (dateSortOnlyMode) {
+                    // In date-sort-only mode, skip duplicate checking and just organize files into
+                    // date folders
+                    if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()
+                            && PropertiesObject.getInstance().isOrganizeDateFolders()) {
                         // Just copy/organize the files without any duplicate checking
-                        String targetPath = calculateTargetPath(fileMetadata, props);
+                        String targetPath = calculateTargetPath(fileMetadata);
                         CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
 
-                        // if (props.isDryRun()) {
-                        // String fileName = thisSourceFile.getName();
-                        // String action = props.isMoveInsteadOfCopy() ? "move and organize" :
-                        // "organize";
-                        // String logMsg = String.format("Would %s %s", action, fileName);
-                        // Platform.runLater(() -> appendLog(logMsg));
-                        // } else {
                         File targetFile = new File(targetPath);
 
                         // Ensure date-based folder exists before copying
                         org.bofus.sumcompare.localutil.DateFolderOrganizer.ensureDateFolderExists(targetFile,
-                                props.isDryRun());
+                                PropertiesObject.getInstance().isDryRun());
 
-                        if (props.isMoveInsteadOfCopy()) {
+                        log.debug("Move instead of copy: {}", PropertiesObject.getInstance().isMoveInsteadOfCopy());
+
+                        if (PropertiesObject.getInstance().isMoveInsteadOfCopy()) {
                             // Move file: copy then delete/trash source
                             org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                    props.isPreserveFileDate());
-                            if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
+                                    PropertiesObject.getInstance().isPreserveFileDate());
+                            if (deleteOrTrashFile(thisSourceFile,
+                                    PropertiesObject.getInstance().isPermanentlyDelete())) {
                                 String fileName = thisSourceFile.getName();
-                                String action = props.isPermanentlyDelete() ? "Moved (deleted)"
+                                String action = PropertiesObject.getInstance().isPermanentlyDelete() ? "Moved (deleted)"
                                         : "Moved (to trash)";
                                 String logMsg = String.format("%s %s", action, fileName);
                                 Platform.runLater(() -> appendLog(logMsg));
@@ -1232,7 +1165,7 @@ public class SumCompareController {
                         } else {
                             // Normal copy
                             org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                    props.isPreserveFileDate());
+                                    PropertiesObject.getInstance().isPreserveFileDate());
                             String fileName = thisSourceFile.getName();
                             String logMsg = String.format("Organized [%s]", fileName);
                             Platform.runLater(() -> appendLog(logMsg));
@@ -1242,7 +1175,8 @@ public class SumCompareController {
                         updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
                     } else {
                         // Normal mode: check for duplicates
-                        MessageDigest threadDigest = (MessageDigest) props.getDigestType().clone();
+                        MessageDigest threadDigest = (MessageDigest) PropertiesObject.getInstance().getDigestType()
+                                .clone();
                         String sourceCheckSum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
 
                         List<String> existingFiles = FileUtilsLocal
@@ -1254,14 +1188,14 @@ public class SumCompareController {
                             String targetFileName = FileUtilsLocal.getFileName(existingFile);
 
                             // Handle duplicate: either rename source file or just log it
-                            if (props.isRenameDuplicates()) {
+                            if (PropertiesObject.getInstance().isRenameDuplicates()) {
                                 // Rename the duplicate source file
-                                String prefix = props.getDuplicatePrefix();
+                                String prefix = PropertiesObject.getInstance().getDuplicatePrefix();
                                 File sourceFileObj = new File(sourceFile);
                                 String newFileName = prefix + sourceFileObj.getName();
                                 File renamedFile = new File(sourceFileObj.getParent(), newFileName);
 
-                                if (props.isDryRun()) {
+                                if (PropertiesObject.getInstance().isDryRun()) {
                                     String logMsg = String.format("Would rename duplicate %s -> %s ",
                                             sourceFileName, newFileName);
                                     Platform.runLater(() -> appendLog(logMsg));
@@ -1291,12 +1225,12 @@ public class SumCompareController {
                             }
                         } else {
                             // File needs to be copied
-                            String targetPath = calculateTargetPath(fileMetadata, props);
+                            String targetPath = calculateTargetPath(fileMetadata);
                             CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
 
-                            if (props.isDryRun()) {
+                            if (PropertiesObject.getInstance().isDryRun()) {
                                 String fileName = thisSourceFile.getName();
-                                String action = props.isMoveInsteadOfCopy() ? "move" : "copy";
+                                String action = PropertiesObject.getInstance().isMoveInsteadOfCopy() ? "move" : "copy";
                                 String logMsg = String.format("Would %s %s ",
                                         action, fileName);
                                 Platform.runLater(() -> appendLog(logMsg));
@@ -1304,25 +1238,29 @@ public class SumCompareController {
                                 File targetFile = new File(targetPath);
 
                                 // Ensure date-based folder exists before copying
-                                if (props.isOrganizeDateFolders()) {
+                                if (PropertiesObject.getInstance().isOrganizeDateFolders()) {
                                     org.bofus.sumcompare.localutil.DateFolderOrganizer
-                                            .ensureDateFolderExists(targetFile, props.isDryRun());
+                                            .ensureDateFolderExists(targetFile,
+                                                    PropertiesObject.getInstance().isDryRun());
                                 }
 
-                                if (props.isMoveInsteadOfCopy()) {
+                                if (PropertiesObject.getInstance().isMoveInsteadOfCopy()) {
                                     // Move file: copy then delete source
                                     org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                            props.isPreserveFileDate());
+                                            PropertiesObject.getInstance().isPreserveFileDate());
 
-                                    if (deleteOrTrashFile(thisSourceFile, props.isPermanentlyDelete())) {
+                                    if (deleteOrTrashFile(thisSourceFile,
+                                            PropertiesObject.getInstance().isPermanentlyDelete())) {
                                         String fileName = thisSourceFile.getName();
-                                        String action = props.isPermanentlyDelete() ? "deleted" : "to trash";
+                                        String action = PropertiesObject.getInstance().isPermanentlyDelete() ? "deleted"
+                                                : "to trash";
                                         String logMsg = String.format("Moved %s %s ",
                                                 action, fileName);
                                         Platform.runLater(() -> appendLog(logMsg));
                                     } else {
                                         String fileName = thisSourceFile.getName();
-                                        String action = props.isPermanentlyDelete() ? "delete" : "trash";
+                                        String action = PropertiesObject.getInstance().isPermanentlyDelete() ? "delete"
+                                                : "trash";
                                         String logMsg = String.format(
                                                 "Copied but failed to %s source %s ",
                                                 action, fileName);
@@ -1331,7 +1269,7 @@ public class SumCompareController {
                                 } else {
                                     // Normal copy
                                     org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                                            props.isPreserveFileDate());
+                                            PropertiesObject.getInstance().isPreserveFileDate());
                                     String fileName = thisSourceFile.getName();
                                     String logMsg = String.format("Copied [%s]: %s (%s)",
                                             fileName);
@@ -1358,37 +1296,39 @@ public class SumCompareController {
     }
 
     // FIXME: This method is where I need to validate functionality
-    private String calculateTargetPath(FileMetadata fileMetadata, PropertiesObject props) {
+    private String calculateTargetPath(FileMetadata fileMetadata) {
 
         File sourceFile = new File(fileMetadata.getAbsolutePath());
-        File targetFile = new File(props.getTargetLocation(), sourceFile.getName());
+        File targetFile = new File(PropertiesObject.getInstance().getTargetLocation(), sourceFile.getName());
 
         // Use date-based folder organization if enabled
-        if (props.isOrganizeDateFolders()) {
+        if (PropertiesObject.getInstance().isOrganizeDateFolders()) {
             try {
                 File baseTargetDir = new File(fileMetadata.getDateTargetLocation());
 
                 targetFile = org.bofus.sumcompare.localutil.DateFolderOrganizer.generateDateBasedTargetPath(
                         sourceFile,
                         baseTargetDir,
-                        props.getDateSource(),
-                        props.getDatePattern(),
-                        props.isKeepSourceStructure(),
-                        props.isUseMetadata(),
+                        PropertiesObject.getInstance().getDateSource(),
+                        PropertiesObject.getInstance().getDatePattern(),
+                        PropertiesObject.getInstance().isKeepSourceStructure(),
+                        PropertiesObject.getInstance().isUseMetadata(),
                         fileMetadata);
 
                 return targetFile.getAbsolutePath();
             } catch (Exception e) {
                 log.error("Error generating date-based path for {}, falling back to standard path", sourceFile, e);
                 // Fallback to standard logic
-                return props.getTargetLocation() + File.separator + targetFile.getName();
+                return PropertiesObject.getInstance().getTargetLocation() + File.separator + targetFile.getName();
             }
-        } else if (props.isKeepSourceStructure()) {
-            String sourceBasePath = sourceFile.getAbsolutePath().replace(props.getSourceLocation(), "");
+        } else if (PropertiesObject.getInstance().isKeepSourceStructure()) {
+            String sourceBasePath = sourceFile.getAbsolutePath()
+                    .replace(PropertiesObject.getInstance().getSourceLocation(), "");
             String tempPath = org.apache.commons.io.FilenameUtils.getPath(sourceBasePath);
-            return props.getTargetLocation() + File.separator + tempPath + File.separator + targetFile.getName();
+            return PropertiesObject.getInstance().getTargetLocation() + File.separator + tempPath + File.separator
+                    + targetFile.getName();
         } else {
-            return props.getTargetLocation() + File.separator + targetFile.getName();
+            return PropertiesObject.getInstance().getTargetLocation() + File.separator + targetFile.getName();
         }
     }
 
@@ -1490,8 +1430,8 @@ public class SumCompareController {
         }
     }
 
-    private void deleteEmptyFolders(String sourceDirectory, PropertiesObject props) {
-        if (!props.isDeleteEmptyFolders() || props.isDryRun()) {
+    private void deleteEmptyFolders(String sourceDirectory) {
+        if (!PropertiesObject.getInstance().isDeleteEmptyFolders() || PropertiesObject.getInstance().isDryRun()) {
             return;
         }
 
@@ -1504,7 +1444,8 @@ public class SumCompareController {
         int deletedCount = deleteEmptyFoldersRecursive(sourceDir, sourceDir);
         if (deletedCount > 0) {
             int finalCount = deletedCount;
-            Platform.runLater(() -> appendLog("Deleted " + finalCount + " empty folder(s)"));
+            Platform.runLater(
+                    () -> appendLog("Deleted " + finalCount + " empty folder(s)"));
         } else {
             Platform.runLater(() -> appendLog("No empty folders found"));
         }
@@ -1573,18 +1514,18 @@ public class SumCompareController {
         });
     }
 
-    private void appendLog(String message) {
-        Platform.runLater(() -> {
-            if (null != logTextArea) {
-                logTextArea.appendText(message + "\n");
-            }
-        });
+    // private void appendLog(String message) {
+    // Platform.runLater(() -> {
+    // if (null != logTextArea) {
+    // logTextArea.appendText(message + "\n");
+    // }
+    // });
 
-        // Also log to file if file logging is enabled
-        if (null != writeLogToFileCheckBox && writeLogToFileCheckBox.isSelected()) {
-            log.info("[UI] {}", message);
-        }
-    }
+    // // Also log to file if file logging is enabled
+    // if (null != writeLogToFileCheckBox && writeLogToFileCheckBox.isSelected()) {
+    // log.info("[UI] {}", message);
+    // }
+    // }
 
     private void updateScannedCount(int count) {
         Platform.runLater(() -> scannedCountLabel.setText(String.valueOf(count)));

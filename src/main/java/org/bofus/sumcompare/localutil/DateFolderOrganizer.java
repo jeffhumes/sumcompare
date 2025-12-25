@@ -199,7 +199,7 @@ public class DateFolderOrganizer {
         boolean created = false;
 
         if (isDryRun) {
-            log.debug("Is Dry Run, would have created {}", targetFile.getName());
+            log.debug("Is Dry Run, would have created {}", targetFile.getParentFile());
         } else {
             if (null != parentDir && !parentDir.exists()) {
                 created = parentDir.mkdirs();

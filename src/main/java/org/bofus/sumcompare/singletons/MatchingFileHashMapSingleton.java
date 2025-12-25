@@ -3,10 +3,7 @@ package org.bofus.sumcompare.singletons;
 import java.beans.PropertyVetoException;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-
 import lombok.extern.slf4j.Slf4j;
 
 /**

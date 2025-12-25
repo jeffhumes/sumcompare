@@ -18,6 +18,7 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FilenameUtils;
+import org.bofus.sumcompare.gui.LogAppenderUI;
 import org.bofus.sumcompare.model.ExistingTargetFileObject;
 import org.bofus.sumcompare.model.PropertiesObject;
 import org.bofus.sumcompare.singletons.ExistingTargetFileObjectArraySingleton;
@@ -27,6 +28,7 @@ import org.bofus.sumcompare.singletons.SourceFileHashMapSingleton;
 import org.bofus.sumcompare.singletons.TargetFileArraySingleton;
 import org.bofus.sumcompare.singletons.TargetFileHashMapSingleton;
 
+import javafx.application.Platform;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -273,6 +275,16 @@ public class FileUtilsLocal {
     String tempDir = System.getProperty("java.io.tmpdir");
     String backupFileName = tempDir + File.separator + "Source_Backup.zip";
     log.info(String.format("Backing up to: %s", backupFileName));
+
+    if (propertiesObject.isDryRun()) {
+      log.info("Dry run mode enabled: Skipping backup zip creation");
+      Platform.runLater(() -> {
+        LogAppenderUI.appendLog("Files backed up successfully (dry run, no zip created).");
+      });
+
+      return;
+    }
+
     try {
       populateBackupFilesList(propertiesObject);
 
