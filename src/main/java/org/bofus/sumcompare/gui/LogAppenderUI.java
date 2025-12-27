@@ -11,7 +11,7 @@ public class LogAppenderUI {
 
     public static TextArea logTextArea;
 
-    public static void appendLog(String message) {
+    public static void appendtoUiLog(String message) {
         Platform.runLater(() -> {
             if (null != logTextArea) {
                 logTextArea.appendText(message + "\n");

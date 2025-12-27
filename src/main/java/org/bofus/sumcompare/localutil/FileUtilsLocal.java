@@ -31,6 +31,8 @@ import org.bofus.sumcompare.singletons.TargetFileHashMapSingleton;
 import javafx.application.Platform;
 import lombok.extern.slf4j.Slf4j;
 
+import static org.bofus.sumcompare.gui.LogAppenderUI.appendtoUiLog;
+
 @Slf4j
 public class FileUtilsLocal {
 
@@ -179,23 +181,30 @@ public class FileUtilsLocal {
 
         // Synchronized access to shared HashMap
         synchronized (TargetFileHashMapSingleton.getInstance().getMap()) {
-          if (TargetFileHashMapSingleton.getInstance().getMap().containsValue(thisFileChecksum)) {
+          log.debug(
+              String.format(
+                  "Adding target file: %s with checksum: %s to HashMap",
+                  fileString, thisFileChecksum));
 
-            // TODO: change to get all existing files for this checksum (into a list?)
-            String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
-            log.trace(
-                String.format(
-                    "Hashmap already contains an entry for checksum: %s with filename of %s",
-                    thisFileChecksum, existingFile));
+          // if
+          // (TargetFileHashMapSingleton.getInstance().getMap().containsValue(thisFileChecksum))
+          // {
 
-            ExistingTargetFileObject thisObject = new ExistingTargetFileObject();
-            thisObject.setCurrentFile(fileString);
-            thisObject.setExistingFile(existingFile);
-            thisObject.setFileChecksum(thisFileChecksum);
-            ExistingTargetFileObjectArraySingleton.getInstance().addToArray(thisObject);
-          } else {
-            TargetFileHashMapSingleton.getInstance().addToMap(thisFileChecksum, fileString);
-          }
+          // String existingFile =
+          // TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
+          // log.debug(
+          // String.format(
+          // "Hashmap already contains an entry for checksum: %s with filename of %s",
+          // thisFileChecksum, existingFile));
+
+          // ExistingTargetFileObject thisObject = new ExistingTargetFileObject();
+          // thisObject.setCurrentFile(fileString);
+          // thisObject.setExistingFile(existingFile);
+          // thisObject.setFileChecksum(thisFileChecksum);
+          // ExistingTargetFileObjectArraySingleton.getInstance().addToArray(thisObject);
+          // } else {
+          TargetFileHashMapSingleton.getInstance().addToMap(fileString, thisFileChecksum);
+          // }
         }
       } catch (Exception e) {
         log.error("Error processing file: " + fileString, e);
@@ -206,10 +215,10 @@ public class FileUtilsLocal {
         String.format(
             "Hashmap size for target files: %s",
             TargetFileHashMapSingleton.getInstance().getMap().size()));
-    log.debug(
-        String.format(
-            "Hashmap size for duplicate/existing target files: %s",
-            ExistingTargetFileObjectArraySingleton.getInstance().getArray().size()));
+    // log.debug(fileString
+    // String.format(
+    // "Hashmap size for duplicate/existing target files: %s",
+    // ExistingTargetFileObjectArraySingleton.getInstance().getArray().size()));
   }
 
   public static List<String> getKeysWithValue(Map<String, String> map, String value) {
@@ -249,9 +258,9 @@ public class FileUtilsLocal {
     return fileName.toString();
   }
 
-  public static void populateBackupFilesList(PropertiesObject propertiesObject)
+  public static void populateBackupFilesList()
       throws IOException, SQLException, PropertyVetoException {
-    File folderToZip = new File(propertiesObject.getSourceLocation());
+    File folderToZip = new File(PropertiesObject.getInstance().getSourceLocation());
 
     File[] files = folderToZip.listFiles();
     for (File file : files) {
@@ -260,33 +269,33 @@ public class FileUtilsLocal {
             .getArray()
             .add(new File(file.getAbsolutePath()));
       else
-        populateBackupFilesList(propertiesObject);
+        populateBackupFilesList();
     }
     log.debug(
         String.format(
             "Number of files in backup array: %s for directory: %s",
             SourceFileBackupArraySingleton.getInstance().getArray().size(),
-            propertiesObject.getSourceLocation()));
+            PropertiesObject.getInstance().getSourceLocation()));
   }
 
   // private void zipDirectory(File dir, String zipDirName)
-  public static void zipDirectory(PropertiesObject propertiesObject)
+  public static void zipDirectory()
       throws SQLException, PropertyVetoException {
     String tempDir = System.getProperty("java.io.tmpdir");
     String backupFileName = tempDir + File.separator + "Source_Backup.zip";
     log.info(String.format("Backing up to: %s", backupFileName));
 
-    if (propertiesObject.isDryRun()) {
+    if (PropertiesObject.getInstance().isDryRun()) {
       log.info("Dry run mode enabled: Skipping backup zip creation");
       Platform.runLater(() -> {
-        LogAppenderUI.appendLog("Files backed up successfully (dry run, no zip created).");
+        LogAppenderUI.appendtoUiLog("Dry run mode enabled: Skipping backup zip creation");
       });
-
+      // exit and do not create backup
       return;
     }
 
     try {
-      populateBackupFilesList(propertiesObject);
+      populateBackupFilesList();
 
       FileOutputStream fos = new FileOutputStream(backupFileName);
       ZipOutputStream zos = new ZipOutputStream(fos);
@@ -313,6 +322,11 @@ public class FileUtilsLocal {
       }
       zos.close();
       fos.close();
+
+      Platform.runLater(() -> {
+        appendtoUiLog("Files backed up successfully");
+      });
+
     } catch (IOException e) {
       e.printStackTrace();
     }

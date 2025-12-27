@@ -97,19 +97,21 @@ public class DateFolderOrganizer {
                                 dateSource);
                         if (dateSource == DateSource.CREATED) {
                             dateTime = null != fileMetadata.getExifDigitizedDate() ? fileMetadata.getExifDigitizedDate()
-                                    : null;
+                                    : null != fileMetadata.getCreationTime() ? fileMetadata.getCreationTime() : null;
                         } else if (dateSource == DateSource.ACCESSED) {
                             dateTime = null != fileMetadata.getExifOriginalDate() ? fileMetadata.getExifOriginalDate()
-                                    : null;
+                                    : null != fileMetadata.getLastAccessTime() ? fileMetadata.getLastAccessTime()
+                                            : null;
                         } else if (dateSource == DateSource.MODIFIED) {
                             dateTime = null != fileMetadata.getExifModifiedDate() ? fileMetadata.getExifModifiedDate()
-                                    : null;
+                                    : null != fileMetadata.getLastModifiedTime() ? fileMetadata.getLastModifiedTime()
+                                            : null;
                         } else {
                             dateTime = null != fileMetadata.getExifModifiedDate() ? fileMetadata.getExifModifiedDate()
-                                    : null;
+                                    : null != fileMetadata.getLastModifiedTime() ? fileMetadata.getLastModifiedTime()
+                                            : null;
                         }
                     }
-
                 } catch (Exception e) {
                     log.error("Could not extract metadata date for {}, falling back to file system: {}",
                             file.getName(), e.getMessage());

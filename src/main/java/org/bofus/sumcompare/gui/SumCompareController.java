@@ -35,7 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.bofus.sumcompare.gui.LogAppenderUI.appendLog;
+import static org.bofus.sumcompare.gui.LogAppenderUI.appendtoUiLog;
 
 /**
  * Controller for the SumCompare GUI.
@@ -256,7 +256,7 @@ public class SumCompareController {
             if (newValue) {
                 targetTextField.clear();
                 updateModeStatusLabel();
-                appendLog("Source duplicate check mode: Target directory disabled");
+                appendtoUiLog("Source duplicate check mode: Target directory disabled");
             } else {
                 updateModeStatusLabel();
             }
@@ -413,7 +413,7 @@ public class SumCompareController {
     private void onCancel() {
         if (null != currentTask && currentTask.isRunning()) {
             currentTask.cancel();
-            appendLog("\n=== OPERATION CANCELLED BY USER ===");
+            appendtoUiLog("\n=== OPERATION CANCELLED BY USER ===");
             statusLabel.setText("Cancelled");
             enableControls(true);
         }
@@ -476,8 +476,8 @@ public class SumCompareController {
             File logDirFile = new File(logDir);
 
             if (!logDirFile.exists() || !logDirFile.isDirectory()) {
-                appendLog("Log directory not found: " + logDir);
-                appendLog("Note: Enable 'Write detailed log to file' checkbox to create log files.");
+                appendtoUiLog("Log directory not found: " + logDir);
+                appendtoUiLog("Note: Enable 'Write detailed log to file' checkbox to create log files.");
                 return;
             }
 
@@ -485,8 +485,8 @@ public class SumCompareController {
             File[] logFiles = logDirFile
                     .listFiles((dir, name) -> name.startsWith("sumcompare_") && name.endsWith(".log"));
             if (logFiles == null || logFiles.length == 0) {
-                appendLog("No log files found in: " + logDir);
-                appendLog("Note: Enable 'Write detailed log to file' checkbox to create log files.");
+                appendtoUiLog("No log files found in: " + logDir);
+                appendtoUiLog("Note: Enable 'Write detailed log to file' checkbox to create log files.");
                 return;
             }
 
@@ -497,9 +497,9 @@ public class SumCompareController {
             // Open log window and show log content
             openLogWindow();
             logTextArea.clear();
-            appendLog("=== Application Log ===\n");
-            appendLog("Location: " + logFile.getAbsolutePath() + "\n");
-            appendLog("Last Modified: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+            appendtoUiLog("=== Application Log ===\n");
+            appendtoUiLog("Location: " + logFile.getAbsolutePath() + "\n");
+            appendtoUiLog("Last Modified: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                     .format(new java.util.Date(logFile.lastModified())) + "\n\n");
 
             java.nio.file.Files.lines(logFile.toPath())
@@ -564,10 +564,10 @@ public class SumCompareController {
 
         logWindowStage.show();
 
-        appendLog("=== SumCompare Processing Log ===");
-        appendLog("Started at: " + java.time.LocalDateTime.now().format(
+        appendtoUiLog("=== SumCompare Processing Log ===");
+        appendtoUiLog("Started at: " + java.time.LocalDateTime.now().format(
                 java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        appendLog("");
+        appendtoUiLog("");
     }
 
     // @FXML
@@ -798,55 +798,20 @@ public class SumCompareController {
                             algorithmComboBox,
                             threadCountSpinner);
 
-                    Platform.runLater(() -> {
-                        appendLog(
-                                "Using comparison algorithm: "
-                                        + PropertiesObject.getInstance().getDigestType().getAlgorithm());
-                    });
+                    appendtoUiLog(
+                            "Using comparison algorithm: "
+                                    + PropertiesObject.getInstance().getDigestType().getAlgorithm());
 
-                    // // Check if this is date-sort-only mode (no duplicate checking)
-                    // if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly() &&
-                    // PropertiesObject.getInstance().isOrganizeDateFolders()) {
-                    // Platform.runLater(() -> {
-                    // appendLog("DATE SORT MODE: Organizing source files by date without duplicate
-                    // checking");
-                    // });
-                    // } else if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()) {
-                    // Platform.runLater(() -> {
-                    // appendLog(
-                    // "SOURCE DUPLICATE CHECK MODE: Only processing duplicates within source, no
-                    // files will be copied");
-                    // });
-                    // }
-
-                    // Step 1: Backup if requested (skip in dry run mode)
-                    // if (PropertiesObject.getInstance().isDryRun()) {
-                    // Platform.runLater(() -> {
-                    // appendLog("Dry run mode enabled: No files will be copied or modified");
-                    // });
-                    // Platform.runLater(() -> {
-                    // appendLog("Dry run mode enabled: Skipping backup");
-                    // });
-                    // } else {
-                    // updateMessage("Dry run mode disabled: Files will be copied/modified as
-                    // needed");
+                    // Begin Source Backup
                     if (PropertiesObject.getInstance().isBackupFirst()) {
-                        Platform.runLater(() -> {
-                            appendLog(
-                                    "Backup requested: A backup of the source directory will be created before processing");
-                        });
-                        FileUtilsLocal.zipDirectory(PropertiesObject.getInstance());
-                        Platform.runLater(() -> {
-                            appendLog("Files backed up successfully");
-                        });
+                        appendtoUiLog(
+                                "Backup requested: A backup of the source directory will be created before processing");
+                        FileUtilsLocal.zipDirectory();
                     } else {
-                        Platform.runLater(() -> {
-                            appendLog("Backup not requested: Proceeding without backup");
-                        });
+                        appendtoUiLog("Backup not requested: Proceeding without backup");
                     }
 
-                    // }
-
+                    // Setup the target folder scan thread
                     Thread targetScanThread = new Thread(() -> {
                         try {
                             // NOTE: if in source duplicate check only mode, we still need to scan the
@@ -862,37 +827,30 @@ public class SumCompareController {
 
                             int targetCount = TargetFileArraySingleton.getInstance().getArray().size();
                             String targetItemCountMsg = "Found " + targetCount + " files in target";
-                            Platform.runLater(() -> {
-                                statusLabel.setText(targetItemCountMsg);
-                                appendLog(targetItemCountMsg);
-                            });
+                            statusLabel.setText(targetItemCountMsg);
+                            appendtoUiLog(targetItemCountMsg);
 
                             // Step 3: Compute target checksums
                             String targetItemCksumMsg = "Computing target checksums...";
-                            Platform.runLater(() -> {
-                                statusLabel.setText(targetItemCksumMsg);
-                                appendLog(targetItemCksumMsg);
-                            });
+                            statusLabel.setText(targetItemCksumMsg);
+                            appendtoUiLog(targetItemCksumMsg);
 
                             FileUtilsLocal.createTargetFileChecksumMap(
                                     TargetFileArraySingleton.getInstance(),
                                     PropertiesObject.getInstance().getDigestType());
 
                             String targetItemCksumCompleteMsg = "Target checksums completed";
-                            Platform.runLater(() -> {
-                                statusLabel.setText(targetItemCksumCompleteMsg);
-                                appendLog(targetItemCksumCompleteMsg);
-                            });
+                            statusLabel.setText(targetItemCksumCompleteMsg);
+                            appendtoUiLog(targetItemCksumCompleteMsg);
                         } catch (Exception e) {
                             log.error("Error scanning target directory", e);
                             String errorMsg = "ERROR scanning target: " + e.getMessage();
-                            Platform.runLater(() -> {
-                                statusLabel.setText(errorMsg);
-                                appendLog(errorMsg);
-                            });
+                            statusLabel.setText(errorMsg);
+                            appendtoUiLog(errorMsg);
                         }
                     });
 
+                    // setup the source folder scan thread
                     Thread sourceScanThread = new Thread(() -> {
                         try {
                             FileUtilsLocal.getSourceDirectoryContentsArray(
@@ -901,16 +859,14 @@ public class SumCompareController {
                             String msg = "Source Location contains  " + sourceCount + " items";
                             Platform.runLater(() -> {
                                 statusLabel.setText(msg);
-                                appendLog(msg);
+                                appendtoUiLog(msg);
                                 updateScannedCount(sourceCount);
                             });
                         } catch (Exception e) {
                             log.error("Error scanning source directory", e);
                             String errorMsg = "ERROR scanning source: " + e.getMessage();
-                            Platform.runLater(() -> {
-                                statusLabel.setText(errorMsg);
-                                appendLog(errorMsg);
-                            });
+                            statusLabel.setText(errorMsg);
+                            appendtoUiLog(errorMsg);
                         }
                     });
 
@@ -967,47 +923,31 @@ public class SumCompareController {
                     // });
                     // }
 
+                    // Start both scan threads
                     sourceScanThread.start();
                     targetScanThread.start();
 
                     // Wait for both threads to complete before proceeding
                     String sourceScanWaitMsg = "Waiting for source directory scan to complete...";
                     log.debug(sourceScanWaitMsg);
-                    Platform.runLater(() -> {
-                        appendLog(sourceScanWaitMsg);
-                    });
+                    appendtoUiLog(sourceScanWaitMsg);
 
                     String targetScanWaitMsg = "Waiting for target directory scan to complete...";
                     log.debug(targetScanWaitMsg);
-                    Platform.runLater(() -> {
-                        appendLog(targetScanWaitMsg);
-                    });
+                    appendtoUiLog(targetScanWaitMsg);
 
                     sourceScanThread.join();
                     String sourceScanCompleteMsg = "Source scan thread completed";
                     log.debug(sourceScanCompleteMsg);
-                    Platform.runLater(() -> {
-                        appendLog(sourceScanCompleteMsg);
-                    });
+                    appendtoUiLog(sourceScanCompleteMsg);
 
                     targetScanThread.join();
                     String targetScanCompleteMsg = "Target scan thread completed";
                     log.debug(targetScanCompleteMsg);
-                    Platform.runLater(() -> {
-                        appendLog(targetScanCompleteMsg);
-                    });
-
-                    // int sourceFileCount =
-                    // SourceFileArraySingleton.getInstance().getArray().size();
-                    // Platform.runLater(() -> {
-                    // appendLog(
-                    // "Found " + sourceFileCount + " files in source");
-                    // });
+                    appendtoUiLog(targetScanCompleteMsg);
 
                     // Step 5: Process source files
-                    Platform.runLater(() -> {
-                        appendLog("Beginning to process source files...");
-                    });
+                    appendtoUiLog("Beginning to process source files...");
 
                     processSourceFiles();
 
@@ -1078,7 +1018,7 @@ public class SumCompareController {
             Platform.runLater(() -> {
                 if (null != newMsg && !newMsg.isEmpty()) {
                     statusLabel.setText(newMsg);
-                    appendLog(newMsg);
+                    appendtoUiLog(newMsg);
                 }
             });
         });
@@ -1109,26 +1049,13 @@ public class SumCompareController {
                     File thisSourceFile = new File(sourceFile);
 
                     // Get the metadata for the current file
-                    log.debug("attempting to get file metadata for: {}", thisSourceFile.getAbsolutePath());
+                    // log.debug("attempting to get file metadata for: {}",
+                    // thisSourceFile.getAbsolutePath());
                     FileMetadata fileMetadata = new FileMetadata();
 
-                    try {
-                        fileMetadata = FileMetadataExtractor.getFileMetadata(thisSourceFile,
-                                PropertiesObject.getInstance());
-                        log.debug("completed getting file metadata for: {}",
-                                thisSourceFile.getName());
-                    } catch (IOException e) {
-                        log.error("IOException while extracting metadata for {}: {}",
-                                thisSourceFile.getName(),
-                                e.getMessage(), e);
-                        throw e;
-                    } catch (ImageProcessingException e) {
-                        log.error("ImageProcessingException while extracting metadata for {}: {}",
-                                thisSourceFile.getName(), e.getMessage(), e);
-                        throw e;
-                    }
+                    fileMetadata = FileMetadataExtractor.getFileMetadata(thisSourceFile,
+                            PropertiesObject.getInstance());
 
-                    // NOTE: CONTINUE HERE
                     // In date-sort-only mode, skip duplicate checking and just organize files into
                     // date folders
                     if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()
@@ -1155,12 +1082,12 @@ public class SumCompareController {
                                 String action = PropertiesObject.getInstance().isPermanentlyDelete() ? "Moved (deleted)"
                                         : "Moved (to trash)";
                                 String logMsg = String.format("%s %s", action, fileName);
-                                Platform.runLater(() -> appendLog(logMsg));
+                                Platform.runLater(() -> appendtoUiLog(logMsg));
                             } else {
                                 String fileName = thisSourceFile.getName();
                                 String logMsg = String.format("Copied but failed to delete source [%s]: %s",
                                         fileName);
-                                Platform.runLater(() -> appendLog(logMsg));
+                                Platform.runLater(() -> appendtoUiLog(logMsg));
                             }
                         } else {
                             // Normal copy
@@ -1168,7 +1095,7 @@ public class SumCompareController {
                                     PropertiesObject.getInstance().isPreserveFileDate());
                             String fileName = thisSourceFile.getName();
                             String logMsg = String.format("Organized [%s]", fileName);
-                            Platform.runLater(() -> appendLog(logMsg));
+                            Platform.runLater(() -> appendtoUiLog(logMsg));
                         }
                         // }
 
@@ -1198,17 +1125,17 @@ public class SumCompareController {
                                 if (PropertiesObject.getInstance().isDryRun()) {
                                     String logMsg = String.format("Would rename duplicate %s -> %s ",
                                             sourceFileName, newFileName);
-                                    Platform.runLater(() -> appendLog(logMsg));
+                                    Platform.runLater(() -> appendtoUiLog(logMsg));
                                 } else {
                                     // Actually rename the file
                                     if (sourceFileObj.renameTo(renamedFile)) {
                                         String logMsg = String.format("Renamed duplicate %s -> %s ",
                                                 sourceFileName, newFileName);
-                                        Platform.runLater(() -> appendLog(logMsg));
+                                        Platform.runLater(() -> appendtoUiLog(logMsg));
                                     } else {
                                         String logMsg = String.format("Failed to rename [%s]: %s ",
                                                 sourceFileName);
-                                        Platform.runLater(() -> appendLog(logMsg));
+                                        Platform.runLater(() -> appendtoUiLog(logMsg));
                                     }
                                 }
                                 MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
@@ -1219,7 +1146,7 @@ public class SumCompareController {
                                 } else {
                                     String logMsg = String.format("Duplicate %s -> %s ",
                                             sourceFileName, existingFile);
-                                    Platform.runLater(() -> appendLog(logMsg));
+                                    Platform.runLater(() -> appendtoUiLog(logMsg));
                                     MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
                                 }
                             }
@@ -1233,7 +1160,7 @@ public class SumCompareController {
                                 String action = PropertiesObject.getInstance().isMoveInsteadOfCopy() ? "move" : "copy";
                                 String logMsg = String.format("Would %s %s ",
                                         action, fileName);
-                                Platform.runLater(() -> appendLog(logMsg));
+                                Platform.runLater(() -> appendtoUiLog(logMsg));
                             } else {
                                 File targetFile = new File(targetPath);
 
@@ -1256,7 +1183,7 @@ public class SumCompareController {
                                                 : "to trash";
                                         String logMsg = String.format("Moved %s %s ",
                                                 action, fileName);
-                                        Platform.runLater(() -> appendLog(logMsg));
+                                        Platform.runLater(() -> appendtoUiLog(logMsg));
                                     } else {
                                         String fileName = thisSourceFile.getName();
                                         String action = PropertiesObject.getInstance().isPermanentlyDelete() ? "delete"
@@ -1264,7 +1191,7 @@ public class SumCompareController {
                                         String logMsg = String.format(
                                                 "Copied but failed to %s source %s ",
                                                 action, fileName);
-                                        Platform.runLater(() -> appendLog(logMsg));
+                                        Platform.runLater(() -> appendtoUiLog(logMsg));
                                     }
                                 } else {
                                     // Normal copy
@@ -1273,7 +1200,7 @@ public class SumCompareController {
                                     String fileName = thisSourceFile.getName();
                                     String logMsg = String.format("Copied [%s]: %s (%s)",
                                             fileName);
-                                    Platform.runLater(() -> appendLog(logMsg));
+                                    Platform.runLater(() -> appendtoUiLog(logMsg));
                                 }
                             }
 
@@ -1440,14 +1367,14 @@ public class SumCompareController {
             return;
         }
 
-        Platform.runLater(() -> appendLog("Cleaning up empty folders..."));
+        Platform.runLater(() -> appendtoUiLog("Cleaning up empty folders..."));
         int deletedCount = deleteEmptyFoldersRecursive(sourceDir, sourceDir);
         if (deletedCount > 0) {
             int finalCount = deletedCount;
             Platform.runLater(
-                    () -> appendLog("Deleted " + finalCount + " empty folder(s)"));
+                    () -> appendtoUiLog("Deleted " + finalCount + " empty folder(s)"));
         } else {
-            Platform.runLater(() -> appendLog("No empty folders found"));
+            Platform.runLater(() -> appendtoUiLog("No empty folders found"));
         }
     }
 
@@ -1629,10 +1556,10 @@ public class SumCompareController {
                 rootLogger.addAppender(fileAppender);
 
                 log.info("File logging enabled: {}", logFilePath);
-                appendLog("File logging enabled: " + logFilePath);
+                appendtoUiLog("File logging enabled: " + logFilePath);
             } else {
                 log.info("File logging disabled");
-                appendLog("File logging disabled");
+                appendtoUiLog("File logging disabled");
             }
         } catch (Exception e) {
             log.error("Failed to toggle file logging", e);

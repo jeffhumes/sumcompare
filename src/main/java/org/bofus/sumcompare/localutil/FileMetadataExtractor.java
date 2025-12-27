@@ -42,7 +42,7 @@ public class FileMetadataExtractor {
     public static FileMetadata getFileMetadata(File file, PropertiesObject props)
             throws IOException, ImageProcessingException {
 
-        log.debug("Entering getFileMetadata for file: {}", file.getAbsolutePath());
+        log.debug("Beginning getFileMetadata for file: {}", file.getAbsolutePath());
         FileMetadata fileMetadata = new FileMetadata();
 
         fileMetadata.setAbsolutePath(file.getAbsolutePath());
