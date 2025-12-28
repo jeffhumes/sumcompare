@@ -286,10 +286,9 @@ public class FileUtilsLocal {
     log.info(String.format("Backing up to: %s", backupFileName));
 
     if (PropertiesObject.getInstance().isDryRun()) {
-      log.info("Dry run mode enabled: Skipping backup zip creation");
-      Platform.runLater(() -> {
-        LogAppenderUI.appendtoUiLog("Dry run mode enabled: Skipping backup zip creation");
-      });
+      String logmsg = "(DRYRUN) - Skipping backup creation";
+      log.info(logmsg);
+      LogAppenderUI.appendtoUiLog(logmsg);
       // exit and do not create backup
       return;
     }
@@ -323,9 +322,7 @@ public class FileUtilsLocal {
       zos.close();
       fos.close();
 
-      Platform.runLater(() -> {
-        appendtoUiLog("Files backed up successfully");
-      });
+      appendtoUiLog("Files backed up successfully");
 
     } catch (IOException e) {
       e.printStackTrace();

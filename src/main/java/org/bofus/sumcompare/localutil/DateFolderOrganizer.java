@@ -196,11 +196,11 @@ public class DateFolderOrganizer {
      * @param targetFile The target file whose parent directories should be created
      * @return true if directories were created or already exist, false on failure
      */
-    public static boolean ensureDateFolderExists(File targetFile, boolean isDryRun) {
+    public static boolean ensureDateFolderExists(File targetFile) {
         File parentDir = targetFile.getParentFile();
         boolean created = false;
 
-        if (isDryRun) {
+        if (PropertiesObject.getInstance().isDryRun()) {
             log.debug("Is Dry Run, would have created {}", targetFile.getParentFile());
         } else {
             if (null != parentDir && !parentDir.exists()) {
