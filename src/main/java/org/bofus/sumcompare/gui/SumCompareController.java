@@ -1302,11 +1302,12 @@ public class SumCompareController {
 
             if (sourceDuplicateMode && dateFoldersMode) {
                 // Date-Sort-Only Mode
-                statusLabel.setText("Mode: DATE-SORT-ONLY (Organize by date, no duplicate checking)");
+                statusLabel.setText(
+                        "Mode: DATE-SORT-ONLY (Check source against itself for duplicates and Organize by date)");
                 statusLabel.setStyle("-fx-text-fill: #2196F3; -fx-font-weight: bold;"); // Blue color
             } else if (sourceDuplicateMode) {
                 // Source Duplicate Check Mode
-                statusLabel.setText("Mode: SOURCE DUPLICATE CHECK (Find duplicates only, no copying)");
+                statusLabel.setText("Mode: SOURCE DUPLICATE CHECK (Check source against itself for duplicates)");
                 statusLabel.setStyle("-fx-text-fill: #FF9800; -fx-font-weight: bold;"); // Orange color
             } else if (dateFoldersMode) {
                 // Normal mode with date organization
@@ -1441,19 +1442,6 @@ public class SumCompareController {
             }
         });
     }
-
-    // private void appendLog(String message) {
-    // Platform.runLater(() -> {
-    // if (null != logTextArea) {
-    // logTextArea.appendText(message + "\n");
-    // }
-    // });
-
-    // // Also log to file if file logging is enabled
-    // if (null != writeLogToFileCheckBox && writeLogToFileCheckBox.isSelected()) {
-    // log.info("[UI] {}", message);
-    // }
-    // }
 
     private void updateScannedCount(int count) {
         Platform.runLater(() -> scannedCountLabel.setText(String.valueOf(count)));

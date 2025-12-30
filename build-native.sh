@@ -12,19 +12,11 @@ echo "==================================================================="
 echo "Step 1: Building JAR..."
 mvn clean package
 
-# Create custom JRE with jlink (reduces size)
-echo "Step 2: Creating custom Java runtime..."
-jlink \
-  --add-modules java.base,java.desktop,java.logging,java.xml,java.naming,java.sql,jdk.unsupported,jdk.crypto.ec \
-  --add-modules javafx.controls,javafx.fxml,javafx.graphics \
-  --strip-debug \
-  --no-header-files \
-  --no-man-pages \
-  --compress=2 \
-  --output target/java-runtime
+# Note: Skipping jlink custom runtime because JavaFX is bundled in the JAR
+# The installer will use the full JDK runtime instead
 
 # Detect OS and create appropriate installer
-echo "Step 3: Creating native installer..."
+echo "Step 2: Creating native installer..."
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo "Building Linux package..."
@@ -34,7 +26,6 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
       --name SumCompare \
       --main-jar sumcompare.jar \
       --main-class org.bofus.sumcompare.gui.SumCompareGUI \
-      --runtime-image target/java-runtime \
       --app-version 0.0.1 \
       --vendor "org.bofus" \
       --description "Intelligent File Deduplication Tool" \
@@ -57,7 +48,6 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
       --name SumCompare \
       --main-jar sumcompare.jar \
       --main-class org.bofus.sumcompare.gui.SumCompareGUI \
-      --runtime-image target/java-runtime \
       --app-version 0.0.1 \
       --vendor "org.bofus" \
       --description "Intelligent File Deduplication Tool" \
@@ -77,7 +67,6 @@ elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
       --name SumCompare \
       --main-jar sumcompare.jar \
       --main-class org.bofus.sumcompare.gui.SumCompareGUI \
-      --runtime-image target/java-runtime \
       --app-version 0.0.1 \
       --vendor "org.bofus" \
       --description "Intelligent File Deduplication Tool" \
