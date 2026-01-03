@@ -103,6 +103,7 @@ public class FileUtilsLocal {
         if (file.isDirectory()) {
           getSourceDirectoryContentsArray(file.toString());
         } else {
+          log.debug(String.format("Found source file: %s", file.getCanonicalPath()));
           SourceFileArraySingleton.getInstance().addToArray(file.getCanonicalPath());
         }
       }
@@ -164,9 +165,7 @@ public class FileUtilsLocal {
     }
   }
 
-  // FIXME: need to update maps to be <Filename, Checksum> instead of <Checksum,
-  // Filename>
-  // this will allow checking if more than one duplicate exists
+  // NOTE: change to use canonical file path vs name only
   public static void createTargetFileChecksumMap(
       TargetFileArraySingleton targetFileArray, MessageDigest digestType)
       throws IOException, SQLException, PropertyVetoException {
@@ -184,7 +183,7 @@ public class FileUtilsLocal {
           log.debug(
               String.format(
                   "Adding target file: %s with checksum: %s to HashMap",
-                  fileString, thisFileChecksum));
+                  thisFile.getCanonicalPath(), thisFileChecksum));
 
           // if
           // (TargetFileHashMapSingleton.getInstance().getMap().containsValue(thisFileChecksum))
