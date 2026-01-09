@@ -22,6 +22,7 @@ import org.bofus.sumcompare.localutil.FileUtilsLocal;
 import org.bofus.sumcompare.localutil.ReportUtils;
 import org.bofus.sumcompare.model.FileMetadata;
 import org.bofus.sumcompare.model.PropertiesObject;
+import org.bofus.sumcompare.model.FileDispositionObject;
 import org.bofus.sumcompare.singletons.*;
 
 import java.io.File;
@@ -30,6 +31,7 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -987,96 +989,66 @@ public class SumCompareController {
                     FileMetadata fileMetadata = FileMetadataExtractor.getFileMetadata(thisSourceFile,
                             PropertiesObject.getInstance());
 
-                    // FIXME: HUGE METHOD - break into smaller methods
-                    // FIXME: we dont need this separate sourceduplicatecheckonly block fold it onto
-                    // the following code
-                    // In source duplicate check mode, organize only source files into date folders
-                    // if (PropertiesObject.getInstance().isSourceDuplicateCheckOnly()) {
-
-                    // // NOTE: now handles date based folder organization
-                    // String targetPath = calculateTargetPath(fileMetadata);
-
-                    // CopiedFileHashMapSingleton.getInstance().addToMap(sourceFile, targetPath);
-
-                    // File targetFile = new File(targetPath);
-
-                    // // Ensure date-based folder exists before copying
-                    // org.bofus.sumcompare.localutil.DateFolderOrganizer.ensureDateFolderExists(targetFile);
-
-                    // log.debug("Move instead of copy: {}",
-                    // PropertiesObject.getInstance().isMoveInsteadOfCopy());
-
-                    // if (PropertiesObject.getInstance().isMoveInsteadOfCopy()) {
-                    // if (PropertiesObject.getInstance().isDryRun()) {
-                    // String fileName = thisSourceFile.getName();
-                    // String logMsg = String.format("(DRYRUN) - Would move (date organize) %s ",
-                    // fileName);
-                    // appendtoUiLog(logMsg);
-                    // log.debug(logMsg);
-                    // updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
-                    // return;
-                    // }
-                    // // Move file: copy then delete/trash source
-                    // org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                    // PropertiesObject.getInstance().isPreserveFileDate());
-                    // if (deleteOrTrashFile(thisSourceFile,
-                    // PropertiesObject.getInstance().isPermanentlyDelete())) {
-                    // String fileName = thisSourceFile.getName();
-                    // String action = PropertiesObject.getInstance().isPermanentlyDelete() ? "Moved
-                    // (deleted)"
-                    // : "Moved (to trash)";
-                    // String logMsg = String.format("%s %s", action, fileName);
-                    // appendtoUiLog(logMsg);
-                    // log.debug(logMsg);
-                    // } else {
-                    // String fileName = thisSourceFile.getName();
-                    // String logMsg = String.format("Copied but failed to delete source [%s]: %s",
-                    // fileName);
-                    // appendtoUiLog(logMsg);
-                    // log.debug(logMsg);
-                    // }
-                    // } else {
-                    // if (PropertiesObject.getInstance().isDryRun()) {
-                    // String fileName = thisSourceFile.getName();
-                    // String logMsg = String.format("(DRYRUN) - Would copy (date organize) %s ",
-                    // fileName);
-                    // appendtoUiLog(logMsg);
-                    // log.debug(logMsg);
-                    // updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
-                    // return;
-                    // }
-                    // // Normal copy
-                    // org.apache.commons.io.FileUtils.copyFile(thisSourceFile, targetFile,
-                    // PropertiesObject.getInstance().isPreserveFileDate());
-                    // String fileName = thisSourceFile.getName();
-                    // String logMsg = String.format("Organized [%s]", fileName);
-                    // appendtoUiLog(logMsg);
-                    // log.debug(logMsg);
-                    // }
-                    // // }
-
-                    // updateCopiedCount(CopiedFileHashMapSingleton.getInstance().getMap().size());
-                    // } else {
-                    // Normal mode: check for duplicates
                     MessageDigest threadDigest = (MessageDigest) PropertiesObject.getInstance().getDigestType()
                             .clone();
                     String sourceCheckSum = FileUtilsLocal.getFileChecksum(threadDigest, thisSourceFile);
 
-                    List<String> existingFiles = FileUtilsLocal
-                            .getKeysWithValue(TargetFileHashMapSingleton.getInstance().getMap(), sourceCheckSum);
+                    if (TargetFileHashMapSingleton.getInstance().getMap().containsValue(sourceCheckSum)) {
+                        // Duplicate found
 
-                    if (TargetFileHashMapSingleton.getInstance().getMap().containsKey(sourceCheckSum)) {
-                        String existingFile = TargetFileHashMapSingleton.getInstance().getMap().get(sourceCheckSum);
+                        // String existingTargetFile =
+                        // TargetFileHashMapSingleton.getInstance().getMap().entrySet()
+                        // .stream()
+                        // .filter(entry -> entry.getValue().equals(sourceCheckSum))
+                        // .map(Map.Entry::getKey)
+                        // .findFirst()
+                        // .orElse(null);
+
+                        for (Map.Entry<String, String> entry : TargetFileHashMapSingleton.getInstance().getMap()
+                                .entrySet()) {
+                            if (entry.getValue().equals(sourceCheckSum)) {
+                                if (thisSourceFile.getAbsolutePath().equals(entry.getKey())) {
+                                    // Same file, skip
+                                    break;
+                                } else {
+                                    FileDispositionObject disposition = new FileDispositionObject();
+
+                                    disposition.setFileChecksum(sourceCheckSum);
+                                    disposition.setCurrentFile(sourceFile);
+                                    disposition.setExistingFile(entry.getKey());
+                                    // TODO: fix hard coded action
+                                    if (PropertiesObject.getInstance().isRenameDuplicates()) {
+                                        disposition.setDispositionAction("RENAME");
+                                    } else {
+                                        disposition.setDispositionAction("LOG ONLY");
+                                    }
+                                    disposition.setDispositionAction("COPY");
+                                    // TODO: fix hard coded location
+                                    disposition.setNewFileLocation("NEW FILE LOCATION");
+
+                                    FileDispositionObjectArraySingleton.getInstance().addToArray(disposition);
+                                    String existingTargetFile = entry.getKey();
+                                    String sourceFileName = FileUtilsLocal.getFileName(sourceFile);
+                                    String logMsg = String.format("Duplicate found: %s -> %s ",
+                                            sourceFileName, existingTargetFile);
+                                    appendtoUiLog(logMsg);
+                                    log.debug(logMsg);
+                                    MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile,
+                                            existingTargetFile);
+                                    break;
+                                }
+
+                            }
+                        }
                         String sourceFileName = FileUtilsLocal.getFileName(sourceFile);
-                        String targetFileName = FileUtilsLocal.getFileName(existingFile);
+                        // String targetFileName = FileUtilsLocal.getFileName(existingTargetFile);
 
                         // Handle duplicate: either rename source file or just log it
                         if (PropertiesObject.getInstance().isRenameDuplicates()) {
                             // Rename the duplicate source file
                             String prefix = PropertiesObject.getInstance().getDuplicatePrefix();
-                            File sourceFileObj = new File(sourceFile);
-                            String newFileName = prefix + sourceFileObj.getName();
-                            File renamedFile = new File(sourceFileObj.getParent(), newFileName);
+                            String newFileName = prefix + thisSourceFile.getName();
+                            File renamedFile = new File(thisSourceFile.getParent(), newFileName);
 
                             if (PropertiesObject.getInstance().isDryRun()) {
                                 String logMsg = String.format("(DRYRUN) - Would rename duplicate %s -> %s ",
@@ -1085,7 +1057,7 @@ public class SumCompareController {
                                 log.debug(logMsg);
                             } else {
                                 // Actually rename the file
-                                if (sourceFileObj.renameTo(renamedFile)) {
+                                if (thisSourceFile.renameTo(renamedFile)) {
                                     String logMsg = String.format("Renamed duplicate %s -> %s ",
                                             sourceFileName, newFileName);
                                     appendtoUiLog(logMsg);
@@ -1097,18 +1069,21 @@ public class SumCompareController {
                                     log.debug(logMsg);
                                 }
                             }
-                            MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
+                            // MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile,
+                            // existingTargetFile);
                         } else {
                             // Original behavior: just log the duplicate
-                            if (sourceFileName.equals(targetFileName)) {
-                                MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
-                            } else {
-                                String logMsg = String.format("Duplicate %s -> %s ",
-                                        sourceFileName, existingFile);
-                                appendtoUiLog(logMsg);
-                                log.debug(logMsg);
-                                MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile, existingFile);
-                            }
+                            // if (sourceFileName.equals(targetFileName)) {
+                            // MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile,
+                            // existingTargetFile);
+                            // } else {
+                            // String logMsg = String.format("Duplicate %s -> %s ",
+                            // sourceFileName, existingTargetFile);
+                            // appendtoUiLog(logMsg);
+                            // log.debug(logMsg);
+                            // MatchingFileHashMapSingleton.getInstance().addToMap(sourceFile,
+                            // existingTargetFile);
+                            // }
                         }
                     } else {
                         // File needs to be copied
@@ -1201,7 +1176,6 @@ public class SumCompareController {
 
                     // Update duplicate count only in normal mode (not date-sort-only)
                     updateDuplicatesCount(MatchingFileHashMapSingleton.getInstance().getMap().size());
-                    // }
                 } catch (Exception e) {
                     log.error("Error processing file: " + sourceFile, e);
                 } finally {
@@ -1474,7 +1448,7 @@ public class SumCompareController {
             TargetFileHashMapSingleton.getInstance().getMap().clear();
             CopiedFileHashMapSingleton.getInstance().getMap().clear();
             MatchingFileHashMapSingleton.getInstance().getMap().clear();
-            ExistingTargetFileObjectArraySingleton.getInstance().getArray().clear();
+            FileDispositionObjectArraySingleton.getInstance().getArray().clear();
         } catch (Exception e) {
             log.error("Error clearing singletons", e);
         }

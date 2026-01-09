@@ -14,10 +14,9 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.bofus.sumcompare.Main;
-import org.bofus.sumcompare.model.ExistingTargetFileObject;
+import org.bofus.sumcompare.model.FileDispositionObject;
 import org.bofus.sumcompare.singletons.CopiedFileHashMapSingleton;
-import org.bofus.sumcompare.singletons.ExistingTargetFileObjectArraySingleton;
+import org.bofus.sumcompare.singletons.FileDispositionObjectArraySingleton;
 import org.bofus.sumcompare.singletons.MatchingFileHashMapSingleton;
 
 import lombok.extern.slf4j.Slf4j;
@@ -84,9 +83,9 @@ public class ReportUtils {
 		}
 
 		// Add the rows for the file data
-		for (int targetDupeArrayCount = 0; targetDupeArrayCount < ExistingTargetFileObjectArraySingleton.getInstance()
+		for (int targetDupeArrayCount = 0; targetDupeArrayCount < FileDispositionObjectArraySingleton.getInstance()
 				.getArray().size(); targetDupeArrayCount++) {
-			ExistingTargetFileObject thisObject = ExistingTargetFileObjectArraySingleton.getInstance().getArray()
+			FileDispositionObject thisObject = FileDispositionObjectArraySingleton.getInstance().getArray()
 					.get(targetDupeArrayCount);
 			Row currentRow = targetDupeSheet.createRow(targetDupeArrayCount + 1);
 			currentRow.createCell(0).setCellValue(thisObject.getCurrentFile());

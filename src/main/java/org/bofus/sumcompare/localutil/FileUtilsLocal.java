@@ -19,9 +19,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FilenameUtils;
 import org.bofus.sumcompare.gui.LogAppenderUI;
-import org.bofus.sumcompare.model.ExistingTargetFileObject;
 import org.bofus.sumcompare.model.PropertiesObject;
-import org.bofus.sumcompare.singletons.ExistingTargetFileObjectArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileBackupArraySingleton;
 import org.bofus.sumcompare.singletons.SourceFileHashMapSingleton;
@@ -185,23 +183,6 @@ public class FileUtilsLocal {
                   "Adding target file: %s with checksum: %s to HashMap",
                   thisFile.getCanonicalPath(), thisFileChecksum));
 
-          // if
-          // (TargetFileHashMapSingleton.getInstance().getMap().containsValue(thisFileChecksum))
-          // {
-
-          // String existingFile =
-          // TargetFileHashMapSingleton.getInstance().getMap().get(thisFileChecksum);
-          // log.debug(
-          // String.format(
-          // "Hashmap already contains an entry for checksum: %s with filename of %s",
-          // thisFileChecksum, existingFile));
-
-          // ExistingTargetFileObject thisObject = new ExistingTargetFileObject();
-          // thisObject.setCurrentFile(fileString);
-          // thisObject.setExistingFile(existingFile);
-          // thisObject.setFileChecksum(thisFileChecksum);
-          // ExistingTargetFileObjectArraySingleton.getInstance().addToArray(thisObject);
-          // } else {
           TargetFileHashMapSingleton.getInstance().addToMap(fileString, thisFileChecksum);
           // }
         }
@@ -214,10 +195,6 @@ public class FileUtilsLocal {
         String.format(
             "Hashmap size for target files: %s",
             TargetFileHashMapSingleton.getInstance().getMap().size()));
-    // log.debug(fileString
-    // String.format(
-    // "Hashmap size for duplicate/existing target files: %s",
-    // ExistingTargetFileObjectArraySingleton.getInstance().getArray().size()));
   }
 
   public static List<String> getKeysWithValue(Map<String, String> map, String value) {
